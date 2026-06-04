@@ -1,0 +1,9 @@
+dotnet/**/bin/
+dotnet/**/obj/
+dotnet/artifacts/
+dotnet/publish/
+dotnet/publish_*/
+dotnet/runner-publish/
+dotnet/runner-publish_*/
+comparison/
+.vs/

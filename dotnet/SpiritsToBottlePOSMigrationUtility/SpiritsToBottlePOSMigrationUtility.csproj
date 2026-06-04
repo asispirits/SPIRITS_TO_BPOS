@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>SpiritsToBottlePOSMigrationUtility</AssemblyName>
+    <RootNamespace>SpiritsToBottlePOSMigrationUtility</RootNamespace>
+    <ApplicationIcon>..\..\2000.ico</ApplicationIcon>
+    <Company>ASI Spirits</Company>
+    <Product>Spirits to BottlePOS Migration Utility</Product>
+    <Version>6.4.26</Version>
+    <FileVersion>6.4.26</FileVersion>
+    <AssemblyVersion>6.4.26.0</AssemblyVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DbfDataReader" Version="1.1.0" />
+  </ItemGroup>
+
+</Project>
