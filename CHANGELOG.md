@@ -2,6 +2,26 @@
 
 All notable changes to this project should be recorded in this file.
 
+## 6.4.26 - 2026-06-04
+
+- updated the .NET utility version metadata to `6.4.26`
+- added STANDARD mode for the existing one-screen workflow
+- added GUIDED mode to walk users through data source, export location, export selection, inventory options, and run confirmation
+- added user-local output folder persistence so the previous export folder is restored on launch
+- added a final completion report popup with a single `FINISH` button that closes the program
+- added an `Open ZIP Folder` action after successful generation
+- changed the UI title/version display to read from assembly metadata instead of hardcoded text
+- fixed default price level selection so the selected level is actually used during inventory pricing
+- added validation for taxable inventory when `CNT.CUSTAX` / `TXC.DBF` tax setup is missing
+- set inventory `taxname` to `NoTax` when the item's category has `CAT.TAXLEVEL = 0`
+- kept `taxrate` blank for `NoTax` inventory rows
+- fixed notes cleanup so repeated spaces and line breaks do not concatenate words
+- filtered blank vendor item numbers from UPC-derived values
+- improved temporary CSV folder cleanup after failures or cancellation
+- reduced repeated DBF and price-row processing during inventory export
+- added `UserPreferencesService` for user-local settings
+- verified Release build and self-contained publish for the updated executable
+
 ## .NET Preview Scaffold - 2026-04-02
 
 - added a new `.NET 8` WinForms solution under `dotnet/SpiritsToBottlePOSMigrationUtility.sln`
