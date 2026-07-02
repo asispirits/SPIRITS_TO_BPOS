@@ -141,25 +141,9 @@ public partial class Form1 : Form
 
     private void ApplyDefaults()
     {
-        departmentsCheckBox.Checked = true;
-        vendorsCheckBox.Checked = true;
-        customersCheckBox.Checked = true;
-        inventoryCheckBox.Checked = true;
-        giftCardsCheckBox.Checked = true;
-        includeInactiveCheckBox.Checked = false;
-        addQtyOneIfMissingCheckBox.Checked = true;
-        defaultPriceLevelCheckBox.Checked = true;
-        defaultPriceLevelComboBox.SelectedIndex = 0;
-
-        guidedDepartmentsCheckBox.Checked = true;
-        guidedVendorsCheckBox.Checked = true;
-        guidedCustomersCheckBox.Checked = true;
-        guidedInventoryCheckBox.Checked = true;
-        guidedGiftCardsCheckBox.Checked = true;
-        guidedIncludeInactiveCheckBox.Checked = false;
-        guidedAddQtyOneIfMissingCheckBox.Checked = true;
-        guidedDefaultPriceLevelCheckBox.Checked = true;
-        guidedDefaultPriceLevelComboBox.SelectedIndex = 0;
+        var defaultOptions = CreateDefaultOptions();
+        ApplyOptionsToStandardControls(defaultOptions);
+        ApplyOptionsToGuidedControls(defaultOptions);
 
         var lastOutputDirectory = _preferencesService.LoadLastOutputDirectory();
         if (!string.IsNullOrWhiteSpace(lastOutputDirectory))
@@ -180,13 +164,85 @@ public partial class Form1 : Form
         UpdateGuidedStep();
     }
 
+    private static ExportOptions CreateDefaultOptions()
+    {
+        return new ExportOptions(
+            ExportDepartments: true,
+            ExportVendors: true,
+            ExportCustomers: true,
+            ExportInventory: true,
+            ExportGiftCards: true,
+            IncludeInactiveProducts: false,
+            AddQuantityOneIfMissing: false,
+            UseDefaultPriceLevel: true,
+            DefaultPriceLevel: "1");
+    }
+
+    private void ApplyOptionsToStandardControls(ExportOptions options)
+    {
+        ApplyOptionsToControls(
+            options,
+            departmentsCheckBox,
+            vendorsCheckBox,
+            customersCheckBox,
+            inventoryCheckBox,
+            giftCardsCheckBox,
+            includeInactiveCheckBox,
+            addQtyOneIfMissingCheckBox,
+            defaultPriceLevelCheckBox,
+            defaultPriceLevelComboBox);
+    }
+
+    private void ApplyOptionsToGuidedControls(ExportOptions options)
+    {
+        ApplyOptionsToControls(
+            options,
+            guidedDepartmentsCheckBox,
+            guidedVendorsCheckBox,
+            guidedCustomersCheckBox,
+            guidedInventoryCheckBox,
+            guidedGiftCardsCheckBox,
+            guidedIncludeInactiveCheckBox,
+            guidedAddQtyOneIfMissingCheckBox,
+            guidedDefaultPriceLevelCheckBox,
+            guidedDefaultPriceLevelComboBox);
+    }
+
+    private static void ApplyOptionsToControls(
+        ExportOptions options,
+        CheckBox departments,
+        CheckBox vendors,
+        CheckBox customers,
+        CheckBox inventory,
+        CheckBox giftCards,
+        CheckBox includeInactive,
+        CheckBox addQtyOneIfMissing,
+        CheckBox defaultPriceLevel,
+        ComboBox priceLevel)
+    {
+        departments.Checked = options.ExportDepartments;
+        vendors.Checked = options.ExportVendors;
+        customers.Checked = options.ExportCustomers;
+        inventory.Checked = options.ExportInventory;
+        giftCards.Checked = options.ExportGiftCards;
+        includeInactive.Checked = options.IncludeInactiveProducts;
+        addQtyOneIfMissing.Checked = options.AddQuantityOneIfMissing;
+        defaultPriceLevel.Checked = options.UseDefaultPriceLevel;
+        priceLevel.SelectedItem = options.DefaultPriceLevel;
+
+        if (priceLevel.SelectedIndex < 0 && priceLevel.Items.Count > 0)
+        {
+            priceLevel.SelectedIndex = 0;
+        }
+    }
+
     private void BuildLayout()
     {
         var version = GetDisplayVersion();
         Font = new Font("Segoe UI", 9F);
         BackColor = Color.FromArgb(244, 246, 248);
-        ClientSize = new Size(980, 680);
-        MinimumSize = new Size(900, 620);
+        ClientSize = new Size(1180, 780);
+        MinimumSize = new Size(1040, 700);
         StartPosition = FormStartPosition.CenterScreen;
         Text = $"Spirits to BottlePOS Migration Utility {version} (.NET)";
 
@@ -749,26 +805,59 @@ public partial class Form1 : Form
     private ExportOptions GetCurrentOptions()
     {
         return _uiMode == UiMode.Guided
-            ? new ExportOptions(
-                guidedDepartmentsCheckBox.Checked,
-                guidedVendorsCheckBox.Checked,
-                guidedCustomersCheckBox.Checked,
-                guidedInventoryCheckBox.Checked,
-                guidedGiftCardsCheckBox.Checked,
-                guidedIncludeInactiveCheckBox.Checked,
-                guidedAddQtyOneIfMissingCheckBox.Checked,
-                guidedDefaultPriceLevelCheckBox.Checked,
-                guidedDefaultPriceLevelComboBox.SelectedItem?.ToString() ?? "1")
-            : new ExportOptions(
-                departmentsCheckBox.Checked,
-                vendorsCheckBox.Checked,
-                customersCheckBox.Checked,
-                inventoryCheckBox.Checked,
-                giftCardsCheckBox.Checked,
-                includeInactiveCheckBox.Checked,
-                addQtyOneIfMissingCheckBox.Checked,
-                defaultPriceLevelCheckBox.Checked,
-                defaultPriceLevelComboBox.SelectedItem?.ToString() ?? "1");
+            ? ReadGuidedOptions()
+            : ReadStandardOptions();
+    }
+
+    private ExportOptions ReadStandardOptions()
+    {
+        return ReadOptionsFromControls(
+            departmentsCheckBox,
+            vendorsCheckBox,
+            customersCheckBox,
+            inventoryCheckBox,
+            giftCardsCheckBox,
+            includeInactiveCheckBox,
+            addQtyOneIfMissingCheckBox,
+            defaultPriceLevelCheckBox,
+            defaultPriceLevelComboBox);
+    }
+
+    private ExportOptions ReadGuidedOptions()
+    {
+        return ReadOptionsFromControls(
+            guidedDepartmentsCheckBox,
+            guidedVendorsCheckBox,
+            guidedCustomersCheckBox,
+            guidedInventoryCheckBox,
+            guidedGiftCardsCheckBox,
+            guidedIncludeInactiveCheckBox,
+            guidedAddQtyOneIfMissingCheckBox,
+            guidedDefaultPriceLevelCheckBox,
+            guidedDefaultPriceLevelComboBox);
+    }
+
+    private static ExportOptions ReadOptionsFromControls(
+        CheckBox departments,
+        CheckBox vendors,
+        CheckBox customers,
+        CheckBox inventory,
+        CheckBox giftCards,
+        CheckBox includeInactive,
+        CheckBox addQtyOneIfMissing,
+        CheckBox defaultPriceLevel,
+        ComboBox priceLevel)
+    {
+        return new ExportOptions(
+            departments.Checked,
+            vendors.Checked,
+            customers.Checked,
+            inventory.Checked,
+            giftCards.Checked,
+            includeInactive.Checked,
+            addQtyOneIfMissing.Checked,
+            defaultPriceLevel.Checked,
+            priceLevel.SelectedItem?.ToString() ?? "1");
     }
 
     private string GetCurrentSourceDirectory()
@@ -984,30 +1073,14 @@ public partial class Form1 : Form
     {
         guidedSourceDirectoryTextBox.Text = sourceDirectoryTextBox.Text;
         guidedOutputDirectoryTextBox.Text = outputDirectoryTextBox.Text;
-        guidedDepartmentsCheckBox.Checked = departmentsCheckBox.Checked;
-        guidedVendorsCheckBox.Checked = vendorsCheckBox.Checked;
-        guidedCustomersCheckBox.Checked = customersCheckBox.Checked;
-        guidedInventoryCheckBox.Checked = inventoryCheckBox.Checked;
-        guidedGiftCardsCheckBox.Checked = giftCardsCheckBox.Checked;
-        guidedIncludeInactiveCheckBox.Checked = includeInactiveCheckBox.Checked;
-        guidedAddQtyOneIfMissingCheckBox.Checked = addQtyOneIfMissingCheckBox.Checked;
-        guidedDefaultPriceLevelCheckBox.Checked = defaultPriceLevelCheckBox.Checked;
-        guidedDefaultPriceLevelComboBox.SelectedItem = defaultPriceLevelComboBox.SelectedItem;
+        ApplyOptionsToGuidedControls(ReadStandardOptions());
     }
 
     private void SyncGuidedToStandard()
     {
         sourceDirectoryTextBox.Text = guidedSourceDirectoryTextBox.Text;
         outputDirectoryTextBox.Text = guidedOutputDirectoryTextBox.Text;
-        departmentsCheckBox.Checked = guidedDepartmentsCheckBox.Checked;
-        vendorsCheckBox.Checked = guidedVendorsCheckBox.Checked;
-        customersCheckBox.Checked = guidedCustomersCheckBox.Checked;
-        inventoryCheckBox.Checked = guidedInventoryCheckBox.Checked;
-        giftCardsCheckBox.Checked = guidedGiftCardsCheckBox.Checked;
-        includeInactiveCheckBox.Checked = guidedIncludeInactiveCheckBox.Checked;
-        addQtyOneIfMissingCheckBox.Checked = guidedAddQtyOneIfMissingCheckBox.Checked;
-        defaultPriceLevelCheckBox.Checked = guidedDefaultPriceLevelCheckBox.Checked;
-        defaultPriceLevelComboBox.SelectedItem = guidedDefaultPriceLevelComboBox.SelectedItem;
+        ApplyOptionsToStandardControls(ReadGuidedOptions());
     }
 
     private void SyncOutputDirectory(TextBox source, TextBox destination)
@@ -1155,12 +1228,17 @@ public partial class Form1 : Form
 
     private void OpenZipFolder()
     {
-        if (string.IsNullOrWhiteSpace(_lastZipFilePath) || !File.Exists(_lastZipFilePath))
+        OpenZipFolderPath(_lastZipFilePath);
+    }
+
+    private static void OpenZipFolderPath(string zipFilePath)
+    {
+        if (string.IsNullOrWhiteSpace(zipFilePath) || !File.Exists(zipFilePath))
         {
             return;
         }
 
-        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{_lastZipFilePath}\"")
+        Process.Start(new ProcessStartInfo("explorer.exe", $"/select,\"{zipFilePath}\"")
         {
             UseShellExecute = true
         });
@@ -1206,18 +1284,37 @@ public partial class Form1 : Form
             Text = BuildCompletionReport(result)
         };
 
+        var dialogButtonBar = new FlowLayoutPanel
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            FlowDirection = FlowDirection.RightToLeft,
+            Margin = new Padding(0, 12, 0, 0)
+        };
+
         var finishButton = new Button
         {
-            Anchor = AnchorStyles.Right,
             AutoSize = true,
             DialogResult = DialogResult.OK,
             Padding = new Padding(18, 7, 18, 7),
             Text = "FINISH"
         };
 
+        var openZipFolderDialogButton = new Button
+        {
+            AutoSize = true,
+            Enabled = !string.IsNullOrWhiteSpace(result.ZipFilePath) && File.Exists(result.ZipFilePath),
+            Padding = new Padding(18, 7, 18, 7),
+            Text = "OPEN ZIP FOLDER"
+        };
+        openZipFolderDialogButton.Click += (_, _) => OpenZipFolderPath(result.ZipFilePath);
+
+        dialogButtonBar.Controls.Add(finishButton);
+        dialogButtonBar.Controls.Add(openZipFolderDialogButton);
+
         layout.Controls.Add(title, 0, 0);
         layout.Controls.Add(report, 0, 1);
-        layout.Controls.Add(finishButton, 0, 2);
+        layout.Controls.Add(dialogButtonBar, 0, 2);
         dialog.AcceptButton = finishButton;
         dialog.Controls.Add(layout);
         dialog.ShowDialog(this);

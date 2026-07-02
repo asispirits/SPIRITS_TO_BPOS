@@ -3,7 +3,7 @@
 This folder contains the `.NET 8` WinForms Spirits-to-BottlePOS migration utility.
 
 Current build:
-- Version: `6.4.26`
+- Version: `7.2.26`
 - Desktop project: `SpiritsToBottlePOSMigrationUtility`
 - Command-line project: `SpiritsToBottlePOSMigrationUtility.Runner`
 
@@ -14,12 +14,15 @@ Current build:
 - Source and output folder selection.
 - User-local saved output folder.
 - Export options for departments, vendors, customers, inventory, gift cards, inactive items, sale prices, and default price levels.
+- `ADD QTY=1 IF MISSING` off by default.
 - Managed DBF reading without local FoxPro/dBase driver requirements.
 - Validation for required DBF inputs based on selected exports.
 - BottlePOS CSV generation for all selected data sets.
-- ZIP packaging of generated CSV files.
+- `CodeToQTY` and `LinkedQTY` inventory columns for UPC-to-QTY links.
+- `reference_UPCModifierLinkAudit.html` for unlinkable UPC codes.
+- ZIP packaging of generated files.
 - Cleanup of the temporary unpacked CSV folder.
-- Final completion report with a `FINISH` button.
+- Final completion report with `Open ZIP Folder` and `FINISH` buttons.
 
 ## Solution Layout
 
@@ -47,3 +50,15 @@ dotnet publish .\dotnet\SpiritsToBottlePOSMigrationUtility\SpiritsToBottlePOSMig
 ```powershell
 dotnet run --project .\dotnet\SpiritsToBottlePOSMigrationUtility.Runner -- --source "D:\path\to\Data" --output "D:\path\to\Output"
 ```
+
+Optional runner flags include:
+- `--departments false`
+- `--vendors false`
+- `--customers false`
+- `--inventory false`
+- `--giftcards false`
+- `--includeinactive true`
+- `--addqty1ifmissing false`
+- `--usedefaultpricelevel true`
+- `--pricelevel 1`
+- `--preview true`

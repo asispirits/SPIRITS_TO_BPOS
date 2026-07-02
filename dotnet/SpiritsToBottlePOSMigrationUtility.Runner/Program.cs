@@ -17,7 +17,7 @@ var options = new ExportOptions(
     GetBool(arguments, "inventory", true),
     GetBool(arguments, "giftcards", true),
     GetBool(arguments, "includeinactive", false),
-    GetBool(arguments, "addqty1ifmissing", true),
+    GetBool(arguments, "addqty1ifmissing", false),
     GetBool(arguments, "usedefaultpricelevel", true),
     arguments.GetValueOrDefault("pricelevel", "1"));
 
@@ -28,7 +28,26 @@ var request = new MigrationRequest(
     GetBool(arguments, "preview", false));
 
 var service = new MigrationService();
-var result = await service.RunAsync(request);
+MigrationResult result;
+try
+{
+    result = await service.RunAsync(request);
+}
+catch (IOException ex)
+{
+    WriteFailure("The migration could not read or write one of the required files. Close any open Spirits/KSV tables, CSVs, ZIP files, or audit reports, then try again.", ex);
+    return 2;
+}
+catch (UnauthorizedAccessException ex)
+{
+    WriteFailure("The migration does not have permission to read or write one of the selected paths. Check the folder permissions or choose a different output folder.", ex);
+    return 2;
+}
+catch (Exception ex)
+{
+    WriteFailure("The migration stopped unexpectedly.", ex);
+    return 2;
+}
 
 Console.WriteLine($"Success: {result.IsSuccess}");
 Console.WriteLine($"Preview: {result.IsPreview}");
@@ -110,4 +129,14 @@ static void WriteUsage()
 {
     Console.WriteLine("Usage:");
     Console.WriteLine(@"  dotnet run --project .\dotnet\SpiritsToBottlePOSMigrationUtility.Runner -- --source ""D:\path\to\Data"" --output ""D:\path\to\Output"" [--giftcards false] [--includeinactive true] [--addqty1ifmissing false] [--pricelevel 1] [--preview true]");
+}
+
+static void WriteFailure(string message, Exception ex)
+{
+    Console.WriteLine("Success: False");
+    Console.WriteLine("Preview: False");
+    Console.WriteLine();
+    Console.WriteLine(message);
+    Console.WriteLine();
+    Console.WriteLine(ex.Message);
 }

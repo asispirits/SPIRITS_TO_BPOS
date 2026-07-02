@@ -11,9 +11,9 @@
     <ApplicationIcon>..\..\2000.ico</ApplicationIcon>
     <Company>ASI Spirits</Company>
     <Product>Spirits to BottlePOS Migration Utility</Product>
-    <Version>6.4.26</Version>
-    <FileVersion>6.4.26</FileVersion>
-    <AssemblyVersion>6.4.26.0</AssemblyVersion>
+    <Version>7.2.26</Version>
+    <FileVersion>7.2.26</FileVersion>
+    <AssemblyVersion>7.2.26.0</AssemblyVersion>
   </PropertyGroup>
 
   <ItemGroup>

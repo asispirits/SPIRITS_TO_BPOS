@@ -10,7 +10,7 @@ public static class MigrationCatalog
             ["departments"] = ["CAT.DBF", "TYP.DBF"],
             ["vendors"] = ["VND.DBF"],
             ["customers"] = ["CUS.DBF"],
-            ["inventory"] = ["INV.DBF", "STR.DBF", "STK.DBF", "PRC.DBF", "UPC.DBF", "CNT.DBF", "TXC.DBF", "VND.DBF", "CAT.DBF"],
+            ["inventory"] = ["INV.DBF", "STR.DBF", "STK.DBF", "PRC.DBF", "DSC.DBF", "UPC.DBF", "CNT.DBF", "TXC.DBF", "VND.DBF", "CAT.DBF"],
             ["giftcards"] = ["GIFTCARD.DBF"]
         };
 
@@ -38,6 +38,7 @@ public static class MigrationCatalog
             outputs.Add("4_inventory.csv");
             outputs.Add("reference_SalePrices.csv");
             outputs.Add("reference_InactiveItems.csv");
+            outputs.Add("reference_UPCModifierLinkAudit.html");
         }
 
         if (options.ExportGiftCards)

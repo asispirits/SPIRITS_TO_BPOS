@@ -2,6 +2,26 @@
 
 All notable changes to this project should be recorded in this file.
 
+## 7.2.26 - 2026-07-02
+
+- updated the .NET utility version metadata to `7.2.26`
+- added `CodeToQTY` and `LinkedQTY` to `4_inventory.csv` immediately after the existing `code` column
+- kept the existing `code` column unchanged so current BottlePOS import behavior remains intact
+- populated `CodeToQTY` and `LinkedQTY` only when the utility can prove a one-to-one UPC-to-quantity match
+- ordered linked UPC codes by the numerical order of their linked quantity
+- treated multiple UPC codes for the same linked quantity as unlinkable
+- added UPC-to-QTY audit output for unlinkable UPC codes only
+- changed the UPC audit output to `reference_UPCModifierLinkAudit.html`
+- embedded memo-style issue details directly inside the audit HTML report
+- removed the audit `SUGGESTED_ACTION` output from the current report design
+- set `ADD QTY=1 IF MISSING` to off by default in standard mode, guided mode, and the runner
+- added an `Open ZIP Folder` option to the completion dialog
+- improved ZIP creation so a temporary archive is created first and then moved into place when complete
+- improved command-line runner error handling for locked files, permission issues, and unexpected failures
+- reduced redundant DBF reads for department and vendor support data
+- kept sale pricing out of `4_inventory.csv`; sale pricing is exported only in `reference_SalePrices.csv`
+- updated `README.md`, the CSV data dictionary, and generated rule documents for the current export behavior
+
 ## 6.4.26 - 2026-06-04
 
 - updated the .NET utility version metadata to `6.4.26`
