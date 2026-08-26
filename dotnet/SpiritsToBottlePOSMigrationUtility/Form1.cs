@@ -8,7 +8,7 @@ namespace SpiritsToBottlePOSMigrationUtility;
 public partial class Form1 : Form
 {
     private readonly IMigrationService _migrationService;
-    private readonly UserPreferencesService _preferencesService = new();
+    private readonly KsvDataDirectoryLocator _dataDirectoryLocator = new();
     private readonly FlowLayoutPanel modeBar = new();
     private readonly RadioButton standardModeRadioButton = new();
     private readonly RadioButton guidedModeRadioButton = new();
@@ -145,18 +145,15 @@ public partial class Form1 : Form
         ApplyOptionsToStandardControls(defaultOptions);
         ApplyOptionsToGuidedControls(defaultOptions);
 
-        var lastOutputDirectory = _preferencesService.LoadLastOutputDirectory();
-        if (!string.IsNullOrWhiteSpace(lastOutputDirectory))
-        {
-            outputDirectoryTextBox.Text = lastOutputDirectory;
-            guidedOutputDirectoryTextBox.Text = lastOutputDirectory;
-        }
+        RefreshAutomaticLocations();
 
-        statusValueLabel.Text = "Waiting to generate";
+        statusValueLabel.Text = "Ready";
         statusValueLabel.ForeColor = Color.FromArgb(72, 92, 112);
-        plannedOutputFolderCaptionLabel.Text = "Output folder";
-        plannedOutputFolderValueLabel.Text = "No run planned yet.";
-        summaryTextBox.Text = "Choose the source data folder, select an output folder, choose the data to export, then run the migration.";
+        plannedOutputFolderCaptionLabel.Text = "Export folder";
+        plannedOutputFolderValueLabel.Text = KsvDataDirectoryLocator.ExportDirectory;
+        summaryTextBox.Text = string.IsNullOrWhiteSpace(sourceDirectoryTextBox.Text)
+            ? "No KSV\\DATA folder was found on an available fixed or network drive."
+            : $"Source data will be read automatically from:{Environment.NewLine}{sourceDirectoryTextBox.Text}{Environment.NewLine}{Environment.NewLine}The completed ZIP will be written to:{Environment.NewLine}{KsvDataDirectoryLocator.ExportDirectory}";
         standardModeRadioButton.Checked = true;
 
         RefreshPlannedOutputs();
@@ -240,57 +237,28 @@ public partial class Form1 : Form
     {
         var version = GetDisplayVersion();
         Font = new Font("Segoe UI", 9F);
-        BackColor = Color.FromArgb(244, 246, 248);
-        ClientSize = new Size(1180, 780);
-        MinimumSize = new Size(1040, 700);
+        BackColor = Color.FromArgb(248, 250, 251);
+        ClientSize = new Size(660, 540);
+        MinimumSize = new Size(620, 500);
         StartPosition = FormStartPosition.CenterScreen;
         Text = $"Spirits to BottlePOS Migration Utility {version} (.NET)";
 
-        titleLabel.AutoSize = true;
-        titleLabel.Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold);
-        titleLabel.Text = $"Spirits to BottlePOS Migration Utility {version}";
-
-        subtitleLabel.AutoSize = true;
-        subtitleLabel.ForeColor = Color.FromArgb(83, 97, 113);
-        subtitleLabel.Text = "Convert Spirits POS .dbf data to BottlePOS-ready CSV files.";
-
-        ConfigureModeBar();
-
-        headerLayout.AutoSize = true;
-        headerLayout.ColumnCount = 1;
-        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        headerLayout.Controls.Add(titleLabel, 0, 0);
-        headerLayout.Controls.Add(subtitleLabel, 0, 1);
-        headerLayout.Controls.Add(modeBar, 0, 2);
-        headerLayout.Dock = DockStyle.Fill;
-        headerLayout.Margin = Padding.Empty;
-        headerLayout.RowCount = 3;
-        headerLayout.RowStyles.Add(new RowStyle());
-        headerLayout.RowStyles.Add(new RowStyle());
-        headerLayout.RowStyles.Add(new RowStyle());
-
-        ConfigureDirectories();
         ConfigureStatus();
         ConfigureExports();
-        ConfigurePlannedOutputs();
-        ConfigureGuidedMode();
         ConfigureButtons();
         ConfigureStandardLayout();
 
         contentPanel.Dock = DockStyle.Fill;
-        contentPanel.Margin = new Padding(0, 12, 0, 0);
+        contentPanel.Margin = Padding.Empty;
         contentPanel.Controls.Add(mainLayout);
-        contentPanel.Controls.Add(guidedLayout);
 
         rootLayout.ColumnCount = 1;
         rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        rootLayout.Controls.Add(headerLayout, 0, 0);
-        rootLayout.Controls.Add(contentPanel, 0, 1);
-        rootLayout.Controls.Add(buttonBar, 0, 2);
+        rootLayout.Controls.Add(contentPanel, 0, 0);
+        rootLayout.Controls.Add(buttonBar, 0, 1);
         rootLayout.Dock = DockStyle.Fill;
-        rootLayout.Padding = new Padding(14);
-        rootLayout.RowCount = 3;
-        rootLayout.RowStyles.Add(new RowStyle());
+        rootLayout.Padding = new Padding(16, 14, 16, 16);
+        rootLayout.RowCount = 2;
         rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
         rootLayout.RowStyles.Add(new RowStyle());
 
@@ -310,34 +278,14 @@ public partial class Form1 : Form
 
     private void ConfigureStandardLayout()
     {
-        leftLayout.ColumnCount = 1;
-        leftLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        leftLayout.Controls.Add(directoriesGroupBox, 0, 0);
-        leftLayout.Controls.Add(statusGroupBox, 0, 1);
-        leftLayout.Dock = DockStyle.Fill;
-        leftLayout.Margin = new Padding(0, 0, 8, 0);
-        leftLayout.RowCount = 2;
-        leftLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        leftLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-        rightLayout.ColumnCount = 1;
-        rightLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        rightLayout.Controls.Add(exportsGroupBox, 0, 0);
-        rightLayout.Controls.Add(plannedOutputsGroupBox, 0, 1);
-        rightLayout.Dock = DockStyle.Fill;
-        rightLayout.Margin = new Padding(8, 0, 0, 0);
-        rightLayout.RowCount = 2;
-        rightLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        rightLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-        mainLayout.ColumnCount = 2;
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52F));
-        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 48F));
-        mainLayout.Controls.Add(leftLayout, 0, 0);
-        mainLayout.Controls.Add(rightLayout, 1, 0);
+        mainLayout.ColumnCount = 1;
+        mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+        mainLayout.Controls.Add(exportsGroupBox, 0, 0);
+        mainLayout.Controls.Add(statusGroupBox, 0, 1);
         mainLayout.Dock = DockStyle.Fill;
         mainLayout.Margin = Padding.Empty;
-        mainLayout.RowCount = 1;
+        mainLayout.RowCount = 2;
+        mainLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
     }
 
@@ -396,7 +344,7 @@ public partial class Form1 : Form
     {
         statusGroupBox.Dock = DockStyle.Fill;
         statusGroupBox.Padding = new Padding(12);
-        statusGroupBox.Text = "Run Status";
+        statusGroupBox.Text = "Export Status";
 
         statusCaptionLabel.Anchor = AnchorStyles.Left;
         statusCaptionLabel.AutoSize = true;
@@ -448,9 +396,9 @@ public partial class Form1 : Form
         exportsGroupBox.AutoSize = true;
         exportsGroupBox.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         exportsGroupBox.Dock = DockStyle.Fill;
-        exportsGroupBox.MinimumSize = new Size(0, 205);
+        exportsGroupBox.MinimumSize = new Size(0, 260);
         exportsGroupBox.Padding = new Padding(12);
-        exportsGroupBox.Text = "Table Selection";
+        exportsGroupBox.Text = "Export Setup";
 
         ConfigureCheckBox(departmentsCheckBox, "Department");
         ConfigureCheckBox(vendorsCheckBox, "Vendor");
@@ -459,21 +407,13 @@ public partial class Form1 : Form
         ConfigureCheckBox(giftCardsCheckBox, "Gift Card");
         ConfigureCheckBox(includeInactiveCheckBox, "Include Inactive Products");
         ConfigureCheckBox(addQtyOneIfMissingCheckBox, "Add QTY=1 If Missing");
-        ConfigureCheckBox(defaultPriceLevelCheckBox, "Use Price Level");
-
         defaultPriceLevelComboBox.DropDownStyle = ComboBoxStyle.DropDownList;
         defaultPriceLevelComboBox.Items.AddRange(["1", "2", "3"]);
-        defaultPriceLevelComboBox.Width = 72;
-
-        defaultPriceLevelHintLabel.AutoSize = true;
-        defaultPriceLevelHintLabel.ForeColor = Color.FromArgb(83, 97, 113);
-        defaultPriceLevelHintLabel.Text = "Price levels 1, 2, or 3";
 
         exportsLayout.AutoSize = true;
         exportsLayout.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        exportsLayout.ColumnCount = 2;
+        exportsLayout.ColumnCount = 1;
         exportsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-        exportsLayout.ColumnStyles.Add(new ColumnStyle());
         exportsLayout.Controls.Add(departmentsCheckBox, 0, 0);
         exportsLayout.Controls.Add(vendorsCheckBox, 0, 1);
         exportsLayout.Controls.Add(customersCheckBox, 0, 2);
@@ -481,20 +421,13 @@ public partial class Form1 : Form
         exportsLayout.Controls.Add(giftCardsCheckBox, 0, 4);
         exportsLayout.Controls.Add(includeInactiveCheckBox, 0, 5);
         exportsLayout.Controls.Add(addQtyOneIfMissingCheckBox, 0, 6);
-        exportsLayout.Controls.Add(defaultPriceLevelCheckBox, 0, 7);
-        exportsLayout.Controls.Add(defaultPriceLevelComboBox, 1, 7);
-        exportsLayout.Controls.Add(defaultPriceLevelHintLabel, 0, 8);
         exportsLayout.Dock = DockStyle.Fill;
         exportsLayout.Margin = Padding.Empty;
-        exportsLayout.RowCount = 9;
-        for (var index = 0; index < 9; index++)
+        exportsLayout.RowCount = 7;
+        for (var index = 0; index < 7; index++)
         {
             exportsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
-
-        exportsLayout.SetColumnSpan(includeInactiveCheckBox, 2);
-        exportsLayout.SetColumnSpan(addQtyOneIfMissingCheckBox, 2);
-        exportsLayout.SetColumnSpan(defaultPriceLevelHintLabel, 2);
 
         exportsGroupBox.Controls.Add(exportsLayout);
     }
@@ -690,7 +623,7 @@ public partial class Form1 : Form
         startButton.BackColor = Color.FromArgb(32, 93, 158);
         startButton.ForeColor = Color.White;
         startButton.Padding = new Padding(14, 6, 14, 6);
-        startButton.Text = "&Process";
+        startButton.Text = "&Generate Export";
         startButton.UseVisualStyleBackColor = false;
 
         openZipFolderButton.AutoSize = true;
@@ -701,7 +634,7 @@ public partial class Form1 : Form
 
         closeButton.AutoSize = true;
         closeButton.Padding = new Padding(14, 6, 14, 6);
-        closeButton.Text = "&Finish";
+        closeButton.Text = "&Close";
 
         buttonBar.AutoSize = true;
         buttonBar.Controls.Add(closeButton);
@@ -744,7 +677,6 @@ public partial class Form1 : Form
     private void BrowseForOutputFolder(TextBox targetTextBox)
     {
         BrowseForFolder(targetTextBox, "Choose the destination for generated CSV files");
-        _preferencesService.SaveLastOutputDirectory(targetTextBox.Text.Trim());
     }
 
     private async Task StartMigrationAsync()
@@ -754,11 +686,8 @@ public partial class Form1 : Form
             return;
         }
 
+        RefreshAutomaticLocations();
         var request = BuildRequest();
-        if (Directory.Exists(request.OutputDirectory))
-        {
-            _preferencesService.SaveLastOutputDirectory(request.OutputDirectory);
-        }
 
         ToggleBusyState(true);
         migrationProgressBar.Value = 0;
@@ -862,16 +791,27 @@ public partial class Form1 : Form
 
     private string GetCurrentSourceDirectory()
     {
-        return _uiMode == UiMode.Guided
-            ? guidedSourceDirectoryTextBox.Text.Trim()
-            : sourceDirectoryTextBox.Text.Trim();
+        var sourceDirectory = _dataDirectoryLocator.FindActiveDataDirectory();
+        sourceDirectoryTextBox.Text = sourceDirectory;
+        guidedSourceDirectoryTextBox.Text = sourceDirectory;
+        return sourceDirectory;
     }
 
     private string GetCurrentOutputDirectory()
     {
-        return _uiMode == UiMode.Guided
-            ? guidedOutputDirectoryTextBox.Text.Trim()
-            : outputDirectoryTextBox.Text.Trim();
+        var outputDirectory = _dataDirectoryLocator.EnsureExportDirectory();
+        outputDirectoryTextBox.Text = outputDirectory;
+        guidedOutputDirectoryTextBox.Text = outputDirectory;
+        return outputDirectory;
+    }
+
+    private void RefreshAutomaticLocations()
+    {
+        var sourceDirectory = _dataDirectoryLocator.FindActiveDataDirectory();
+        sourceDirectoryTextBox.Text = sourceDirectory;
+        guidedSourceDirectoryTextBox.Text = sourceDirectory;
+        outputDirectoryTextBox.Text = KsvDataDirectoryLocator.ExportDirectory;
+        guidedOutputDirectoryTextBox.Text = KsvDataDirectoryLocator.ExportDirectory;
     }
 
     private void ApplyResult(MigrationResult result)
