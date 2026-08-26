@@ -1,0 +1,56 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set build version from Eastern date
+        id: version
+        shell: pwsh
+        run: |
+          $easternTimeZone = [System.TimeZoneInfo]::FindSystemTimeZoneById('Eastern Standard Time')
+          $easternNow = [System.TimeZoneInfo]::ConvertTimeFromUtc([DateTime]::UtcNow, $easternTimeZone)
+          $buildVersion = $easternNow.ToString('M.d.yy')
+          "version=$buildVersion" >> $env:GITHUB_OUTPUT
+          "assembly_version=$buildVersion.0" >> $env:GITHUB_OUTPUT
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Publish self-contained Windows executable
+        shell: pwsh
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.version }}
+          ASSEMBLY_VERSION: ${{ steps.version.outputs.assembly_version }}
+        run: |
+          dotnet publish dotnet/SpiritsToBottlePOSMigrationUtility/SpiritsToBottlePOSMigrationUtility.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            --output dotnet/artifacts/win-x64 `
+            /p:PublishSingleFile=true `
+            /p:IncludeNativeLibrariesForSelfExtract=true `
+            /p:EnableCompressionInSingleFile=true `
+            /p:Version=$env:BUILD_VERSION `
+            /p:FileVersion=$env:BUILD_VERSION `
+            /p:AssemblyVersion=$env:ASSEMBLY_VERSION
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: SpiritsToBottlePOSMigrationUtility-${{ steps.version.outputs.version }}
+          path: dotnet/artifacts/win-x64/SpiritsToBottlePOSMigrationUtility.exe
+          if-no-files-found: error

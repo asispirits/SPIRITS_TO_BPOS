@@ -199,7 +199,7 @@ public sealed class MigrationService : IMigrationService
         var store = storeRows.Count == 0 ? 0 : ToInt32(storeRows[0], "STORE");
 
         var cntRows = rowCache.ReadRows("CNT.DBF", "CODE", "DATA");
-        var txcRows = rowCache.ReadRows("TXC.DBF", "CODE", "RATE", "DESCRIPT");
+        var txcRows = rowCache.ReadRows("TXC.DBF", "CODE", "LEVEL", "RATE", "DESCRIPT");
         var vendorRows = rowCache.ReadRows("VND.DBF", "VCODE", "LASTNAME", "FIRSTNAME");
         var categoryRows = rowCache.ReadRows("CAT.DBF", "CAT", "NAME", "TAXLEVEL");
         var discountRows = rowCache.ReadRows("DSC.DBF", "DCODE", "LEVEL1DISC");
@@ -220,22 +220,12 @@ public sealed class MigrationService : IMigrationService
             string.Equals(UpperTrim(GetString(row, "CODE")), "CUSTAX", StringComparison.OrdinalIgnoreCase));
         var saleTaxCode = UpperTrim(saleTaxCodeRow is null ? string.Empty : GetString(saleTaxCodeRow, "DATA"));
 
-        var saleTaxRate = 0m;
-        var saleTaxName = string.Empty;
-        if (!string.IsNullOrWhiteSpace(saleTaxCode))
-        {
-            var taxRow = txcRows.FirstOrDefault(row =>
-                string.Equals(UpperTrim(GetString(row, "CODE")), saleTaxCode, StringComparison.OrdinalIgnoreCase));
-
-            if (taxRow is not null)
-            {
-                saleTaxRate = VfpRound(ToDecimal(taxRow, "RATE") * 100m, 2);
-                saleTaxName = CleanUpperText(
-                    string.IsNullOrWhiteSpace(GetString(taxRow, "DESCRIPT"))
-                        ? GetString(taxRow, "CODE")
-                        : GetString(taxRow, "DESCRIPT"));
-            }
-        }
+        var saleTaxRowsByLevel = string.IsNullOrWhiteSpace(saleTaxCode)
+            ? new Dictionary<decimal, Dictionary<string, object?>>()
+            : txcRows
+                .Where(row => string.Equals(UpperTrim(GetString(row, "CODE")), saleTaxCode, StringComparison.OrdinalIgnoreCase))
+                .GroupBy(row => ToDecimal(row, "LEVEL"))
+                .ToDictionary(group => group.Key, group => group.First());
 
         var vendorNameByCode = vendorRows
             .Where(row => !string.IsNullOrWhiteSpace(GetString(row, "VCODE")))
@@ -254,15 +244,6 @@ public sealed class MigrationService : IMigrationService
             .Where(row => ToDecimal(row, "LEVEL1DISC") == 0m)
             .Select(row => UpperTrim(GetString(row, "DCODE")))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        var hasTaxableInventory = inventoryRows.Any(row =>
-            categoryTaxLevelByCode.TryGetValue(UpperTrim(row.Cat), out var level) && level > 0m);
-
-        if (hasTaxableInventory && string.IsNullOrWhiteSpace(saleTaxName))
-        {
-            throw new InvalidOperationException(
-                "Inventory includes taxable items, but the sale tax setup could not be found in CNT.CUSTAX/TXC.DBF. Fix the tax setup or exclude inventory before generating output.");
-        }
 
         var stockBySku = stockRows
             .Where(row => row.Store == store)
@@ -330,11 +311,13 @@ public sealed class MigrationService : IMigrationService
 
             var hasCategoryTaxLevel = categoryTaxLevelByCode.TryGetValue(UpperTrim(inventoryRow.Cat), out var taxLevel);
             var isTaxable = hasCategoryTaxLevel && taxLevel > 0m;
-            var taxName = isTaxable
-                ? saleTaxName
-                : hasCategoryTaxLevel && taxLevel == 0m
-                    ? "NoTax"
-                    : string.Empty;
+            saleTaxRowsByLevel.TryGetValue(taxLevel, out var taxRow);
+            var taxName = !isTaxable || taxRow is null
+                ? string.Empty
+                : CleanUpperText(
+                    string.IsNullOrWhiteSpace(GetString(taxRow, "DESCRIPT"))
+                        ? GetString(taxRow, "CODE")
+                        : GetString(taxRow, "DESCRIPT"));
 
             var outputRow = new[]
             {
@@ -353,7 +336,7 @@ public sealed class MigrationService : IMigrationService
                 TrimToLength(FormatInteger(unitsPerCaseValue), 25),
                 FormatPointsMultiplier(inventoryRow.FsFactor),
                 TrimToLength(taxName, 30),
-                TrimToLength(isTaxable ? FormatRate(saleTaxRate) : string.Empty, 30),
+                TrimToLength(isTaxable && taxRow is not null ? FormatRate(ToDecimal(taxRow, "RATE") * 100m) : string.Empty, 30),
                 TrimToLength(string.IsNullOrWhiteSpace(inventoryRow.TypeName)
                     ? "MISC"
                     : CleanUpperMultilineText(inventoryRow.TypeName), 50),
