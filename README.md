@@ -74,15 +74,11 @@ Inventory output includes the original `code` column plus the new `CodeToQTY` an
 ## Running The Application
 
 1. Launch `SpiritsToBottlePOSMigrationUtility.exe`.
-2. Choose `STANDARD` or `GUIDED` mode.
-3. Select the Spirits/KSV data directory.
-4. Select the output directory.
-5. Choose which data sets to export.
-6. If exporting inventory, choose inventory options.
-7. Run the migration.
-8. Review the completion report.
-9. Use `Open ZIP Folder` if you want to open the finished archive location.
-10. Select `FINISH`.
+2. The utility locates each available fixed or network drive's `\KSV\DATA` folder. When more than one exists, it uses the folder with the most recently accessed or modified file.
+3. Choose the data sets to export and any inventory options.
+4. Select `Generate Export`.
+5. The completed ZIP is written to `C:\BPOS\_EXPORT`; the utility creates that folder if needed.
+6. Review the completion report or use `Open ZIP Folder`.
 
 ## Repository Layout
 

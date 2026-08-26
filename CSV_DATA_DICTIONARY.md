@@ -16,6 +16,7 @@ Current documented version: `7.2.26`
 - SKUs are written as text. SKUs shorter than 6 characters are left-padded to 5 characters. SKUs with 6 or more characters are left unchanged.
 - The active store is read from the first row in `STR.DBF` using the `STORE` field. Inventory, stock, and sale-price logic uses that store where noted.
 - Generated CSV and reference files are packaged into a ZIP archive after export.
+- The Windows application automatically selects the active `\KSV\DATA` folder and writes the completed ZIP to `C:\BPOS\_EXPORT`, creating the export folder if needed.
 
 ## Source Table Summary
 

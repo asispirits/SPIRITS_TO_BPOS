@@ -2,6 +2,12 @@
 
 All notable changes to this project should be recorded in this file.
 
+## Unreleased
+
+- automatically locate the active root-level `\KSV\DATA` folder across available fixed and network drives, choosing the most recently accessed or modified source when more than one exists
+- automatically create `C:\BPOS\_EXPORT` and write completed ZIP exports there
+- simplified the Windows UI to the compact export-selection and progress layout
+
 ## 7.2.26 - 2026-07-02
 
 - updated the .NET utility version metadata to `7.2.26`
