@@ -251,6 +251,7 @@ public sealed class MigrationService : IMigrationService
             .ToDictionary(group => group.Key, BuildStockAggregate);
 
         var priceIndex = BuildPriceIndex(priceRows, store, options, nonDiscountableDiscountCodes);
+        var modifierPricingBySku = BuildModifierPricingBySku(priceRows, store);
         var upcBySku = BuildUpcBySku(upcRows);
         var upcLevelEntriesBySku = BuildUpcLevelEntriesBySku(upcRows);
         var vendorItemBySku = BuildVendorItemNumbersBySku(upcRows);
@@ -266,6 +267,7 @@ public sealed class MigrationService : IMigrationService
             var sku = inventoryRow.Sku;
             stockBySku.TryGetValue(sku, out var stock);
             priceIndex.PricingBySku.TryGetValue(sku, out var pricingRows);
+            modifierPricingBySku.TryGetValue(sku, out var modifierPricingRows);
             upcBySku.TryGetValue(sku, out var productUpcs);
             upcLevelEntriesBySku.TryGetValue(sku, out var upcLevelEntries);
             vendorItemBySku.TryGetValue(sku, out var vendorItems);
@@ -281,7 +283,7 @@ public sealed class MigrationService : IMigrationService
                 ? string.Empty
                 : foundVendorName;
 
-            var pricingSummary = BuildPricingSummary(pricingRows, averageCostPerUnit, lastCostPerUnit);
+            var pricingSummary = BuildPricingSummary(pricingRows, modifierPricingRows, averageCostPerUnit, lastCostPerUnit);
             var upcQuantityLinkSummary = BuildUpcQuantityLinkSummary(sku, pricingRows, upcLevelEntries);
             upcModifierLinkAuditRows.AddRange(upcQuantityLinkSummary.AuditRows);
             var isDiscountBlocked = priceIndex.NonDiscountableBySku.TryGetValue(sku, out var foundDiscountBlocked) &&
@@ -728,6 +730,36 @@ public sealed class MigrationService : IMigrationService
         }
 
         return new PriceIndex(pricingBySku, inventoryQuantityDivisorBySku, effectivePackageQuantityBySku, nonDiscountableBySku);
+    }
+
+    private static IReadOnlyDictionary<int, List<PricingRow>> BuildModifierPricingBySku(
+        IReadOnlyList<PriceSourceRow> priceRows,
+        int store)
+    {
+        return priceRows
+            .Where(row => row.Quantity > 1m)
+            .Where(row => row.Level is "1" or "2" or "3" or "4")
+            .GroupBy(row => row.Sku)
+            .ToDictionary(
+                group => group.Key,
+                group =>
+                {
+                    var entries = group.Select(row => new PriceEntry(row, row.Sequence));
+                    return GetPreferredStoreEntries(entries, store, static _ => true)
+                        .GroupBy(entry => entry.Row.Quantity)
+                        .Select(quantityGroup => quantityGroup
+                            .OrderBy(entry => entry.Row.Price)
+                            .ThenBy(entry => entry.Sequence)
+                            .First())
+                        .OrderBy(entry => entry.Row.Quantity)
+                        .Select(entry => new PricingRow(
+                            entry.Row.Sku,
+                            entry.Row.Quantity,
+                            entry.Row.Price,
+                            entry.Row.Level,
+                            entry.Sequence))
+                        .ToList();
+                });
     }
 
     private static IEnumerable<PriceEntry> BuildQualifiedPriceEntries(
@@ -1195,17 +1227,20 @@ public sealed class MigrationService : IMigrationService
                 .OrderBy(value => value, StringComparer.OrdinalIgnoreCase));
     }
 
-    private static PricingSummary BuildPricingSummary(IReadOnlyList<PricingRow>? pricingRows, decimal averageCostPerUnit, decimal lastCostPerUnit)
+    private static PricingSummary BuildPricingSummary(
+        IReadOnlyList<PricingRow>? pricingRows,
+        IReadOnlyList<PricingRow>? modifierPricingRows,
+        decimal averageCostPerUnit,
+        decimal lastCostPerUnit)
     {
         if (pricingRows is null || pricingRows.Count == 0)
         {
-            return new PricingSummary(1, 0m, string.Empty, string.Empty, string.Empty, string.Empty);
+            pricingRows = Array.Empty<PricingRow>();
         }
 
         var seenQuantities = new HashSet<decimal>();
         var defaultQuantity = 1;
         var defaultPrice = 0m;
-        var baseQuantity = 1m;
         var modifierQuantities = new List<string>();
         var modifierPrices = new List<string>();
         var modifierCosts = new List<string>();
@@ -1222,20 +1257,17 @@ public sealed class MigrationService : IMigrationService
             if (isFirstUniqueQuantity)
             {
                 defaultQuantity = pricingRow.Quantity == 0m ? 1 : (int)Math.Round(pricingRow.Quantity, 0, MidpointRounding.AwayFromZero);
-                baseQuantity = pricingRow.Quantity == 0m ? 1m : pricingRow.Quantity;
                 defaultPrice = pricingRow.Price;
                 isFirstUniqueQuantity = false;
-                continue;
             }
+        }
 
-            var modifierQuantity = baseQuantity == 1m
-                ? pricingRow.Quantity
-                : Math.Round(pricingRow.Quantity / baseQuantity, 0, MidpointRounding.AwayFromZero);
-
-            modifierQuantities.Add(FormatWholeNumber(modifierQuantity));
-            modifierPrices.Add(FormatMoney(pricingRow.Price));
-            modifierCosts.Add(FormatMoney(averageCostPerUnit * pricingRow.Quantity));
-            modifierLastCosts.Add(FormatMoney(lastCostPerUnit * pricingRow.Quantity));
+        foreach (var modifierPricingRow in modifierPricingRows ?? Array.Empty<PricingRow>())
+        {
+            modifierQuantities.Add(FormatWholeNumber(modifierPricingRow.Quantity));
+            modifierPrices.Add(FormatMoney(modifierPricingRow.Price));
+            modifierCosts.Add(FormatMoney(averageCostPerUnit * modifierPricingRow.Quantity));
+            modifierLastCosts.Add(FormatMoney(lastCostPerUnit * modifierPricingRow.Quantity));
         }
 
         if (defaultQuantity == 0)
