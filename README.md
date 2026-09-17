@@ -124,8 +124,6 @@ Optional runner flags include:
 - `--giftcards false`
 - `--includeinactive true`
 - `--addqty1ifmissing false`
-- `--usedefaultpricelevel true`
-- `--pricelevel 1`
 - `--preview true`
 
 ## Documentation

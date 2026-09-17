@@ -44,7 +44,7 @@ The selected checkboxes control which data sets are exported. If a selected expo
 
 Inventory pricing comes from selected `PRC.DBF` rows where `QTY > 0`.
 
-When `Use Price Level` is enabled, only the selected level is used. When it is disabled, levels `7`, `8`, and `9` are excluded.
+All applicable price levels are considered except levels `7`, `8`, and `9`.
 
 If pricing exists for the active store, active-store pricing is preferred. If no active-store pricing exists, store `1` is preferred.
 

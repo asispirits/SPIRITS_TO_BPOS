@@ -78,7 +78,7 @@ One row is built for each `INV.DBF` item. By default, inactive items are exclude
 
 Inventory stock data is taken from `STK.DBF` rows for the active store. If multiple stock rows exist for the same SKU and store, the export uses the maximum value for `FLOOR`, `BACK`, `ACOST`, `LCOST`, and `MINCOST`, and the maximum cleaned string value for `PVEND`, `LVEND`, and `STAT`.
 
-Pricing rows come from `PRC.DBF` rows where `QTY > 0`. If `Use Price Level` is selected, only the selected level, `1`, `2`, or `3`, is used. Otherwise levels `7`, `8`, and `9` are excluded. When pricing rows exist for both the active store and other stores, active-store rows are preferred. If no active-store rows exist, store `1` is preferred.
+Pricing rows come from `PRC.DBF` rows where `QTY > 0`; levels `7`, `8`, and `9` are excluded. When pricing rows exist for both the active store and other stores, active-store rows are preferred. If no active-store rows exist, store `1` is preferred.
 
 | CSV column | Source data | How the value is built |
 | --- | --- | --- |

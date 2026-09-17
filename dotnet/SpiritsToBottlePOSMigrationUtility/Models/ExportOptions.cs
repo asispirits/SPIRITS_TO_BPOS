@@ -7,9 +7,7 @@ public sealed record ExportOptions(
     bool ExportInventory,
     bool ExportGiftCards,
     bool IncludeInactiveProducts,
-    bool AddQuantityOneIfMissing,
-    bool UseDefaultPriceLevel,
-    string DefaultPriceLevel)
+    bool AddQuantityOneIfMissing)
 {
     public bool HasSelections =>
         ExportDepartments ||

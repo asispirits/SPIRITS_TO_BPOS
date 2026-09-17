@@ -668,7 +668,7 @@ public sealed class MigrationService : IMigrationService
         var inventoryQuantityDivisorBySku = new Dictionary<int, decimal>();
         var nonDiscountableBySku = new Dictionary<int, bool>();
 
-        foreach (var group in BuildQualifiedPriceEntries(priceRows, options).GroupBy(entry => entry.Row.Sku))
+        foreach (var group in BuildQualifiedPriceEntries(priceRows).GroupBy(entry => entry.Row.Sku))
         {
             var pricedEntries = GetPreferredStoreEntries(group, store, entry => entry.Row.Price > 0m);
             var discountEntries = GetPreferredStoreEntries(group, store, entry => !string.IsNullOrWhiteSpace(entry.Row.DiscountCode));
@@ -690,7 +690,7 @@ public sealed class MigrationService : IMigrationService
                     group.Key,
                     1m,
                     VfpRound(firstNonUnitRow.Price / firstNonUnitRow.Quantity, 2),
-                    options.DefaultPriceLevel,
+                    firstNonUnitRow.Level,
                     -1));
 
                 pricingRows = pricingRows
@@ -762,9 +762,7 @@ public sealed class MigrationService : IMigrationService
                 });
     }
 
-    private static IEnumerable<PriceEntry> BuildQualifiedPriceEntries(
-        IReadOnlyList<PriceSourceRow> priceRows,
-        ExportOptions options)
+    private static IEnumerable<PriceEntry> BuildQualifiedPriceEntries(IReadOnlyList<PriceSourceRow> priceRows)
     {
         return priceRows
             .Select(row => new PriceEntry(row, row.Sequence))
@@ -772,9 +770,7 @@ public sealed class MigrationService : IMigrationService
             .Where(entry =>
             {
                 var level = entry.Row.Level;
-                return options.UseDefaultPriceLevel
-                    ? string.Equals(level, options.DefaultPriceLevel, StringComparison.OrdinalIgnoreCase)
-                    : level is not "7" and not "8" and not "9";
+                return level is not "7" and not "8" and not "9";
             });
     }
 
@@ -1045,14 +1041,8 @@ public sealed class MigrationService : IMigrationService
             return selectedRows;
         }
 
-        var seenQuantities = new HashSet<decimal>();
         foreach (var pricingRow in pricingRows)
         {
-            if (!seenQuantities.Add(pricingRow.Quantity))
-            {
-                continue;
-            }
-
             selectedRows.Add(new SelectedQuantityRow(pricingRow.Level, pricingRow.Quantity));
         }
 
@@ -1388,11 +1378,6 @@ public sealed class MigrationService : IMigrationService
             yield return "Select at least one export before starting the migration.";
         }
 
-        if (request.Options.UseDefaultPriceLevel &&
-            !new[] { "1", "2", "3" }.Contains(request.Options.DefaultPriceLevel, StringComparer.Ordinal))
-        {
-            yield return "Default price level must be 1, 2, or 3.";
-        }
     }
 
     private static string BuildIssueSummary(string intro, IEnumerable<string> issues)

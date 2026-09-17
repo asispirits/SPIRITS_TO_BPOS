@@ -39,9 +39,6 @@ partial class Form1
     private CheckBox giftCardsCheckBox;
     private CheckBox includeInactiveCheckBox;
     private CheckBox addQtyOneIfMissingCheckBox;
-    private CheckBox defaultPriceLevelCheckBox;
-    private ComboBox defaultPriceLevelComboBox;
-    private Label defaultPriceLevelHintLabel;
     private Label exportsHintLabel;
     private GroupBox plannedOutputsGroupBox;
     private Label plannedOutputsHintLabel;
@@ -97,9 +94,6 @@ partial class Form1
         giftCardsCheckBox = new();
         includeInactiveCheckBox = new();
         addQtyOneIfMissingCheckBox = new();
-        defaultPriceLevelCheckBox = new();
-        defaultPriceLevelComboBox = new();
-        defaultPriceLevelHintLabel = new();
         exportsHintLabel = new();
         plannedOutputsGroupBox = new();
         plannedOutputsHintLabel = new();
