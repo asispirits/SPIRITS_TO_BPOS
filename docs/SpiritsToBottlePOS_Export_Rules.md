@@ -48,23 +48,17 @@ All applicable price levels are considered except levels `7`, `8`, and `9`.
 
 If pricing exists for the active store, active-store pricing is preferred. If no active-store pricing exists, store `1` is preferred.
 
-The first selected quantity becomes the base price row. Additional selected quantities become modifier quantities and prices.
+The item row always represents one unit. If QTY=1 pricing exists, its lowest price is used. Otherwise the lowest-quantity price is divided by its quantity and rounded to two decimals. Distinct whole-number quantities greater than one become modifier tiers; duplicate quantities use the lowest price.
 
 ## Quantity Rules
 
-`ADD QTY=1 IF MISSING` is off by default.
-
-When this option is off, inventory quantity is based on back stock divided by the inventory quantity divisor. The divisor is normally the smallest selected priced quantity.
-
-When this option is on and a SKU has pricing but no `QTY = 1`, the utility can add an internal unit row for export calculations. This option should only be used when the team intentionally wants that behavior.
+Inventory `qty` is the shared unit stock calculated as `BACK + FLOOR`. Item cost and latest cost are unit costs, and `unitspercase` uses `INV.DBF.PACK` directly.
 
 ## Inventory Column Placement
 
-The inventory export keeps the existing `code` column and adds two new columns directly after it:
+The inventory export keeps the existing `code` column and writes `ModifiersQty`, `ModifiersCost`, `ModifiersLatestCost`, `ModifiersPrice`, and `ModifiersStockcode` as position-aligned lists.
 
-![Inventory columns sample](assets/inventory_columns_sample.png)
-
-The placement keeps the existing UPC list intact while making the new UPC-to-QTY relationship easy to review.
+The `size` column is also exported as a combined value such as `12 OZ` or `750 ML`; the existing `Unit_Size` and `Unit_Type` columns remain for compatibility.
 
 ## UPC-To-QTY Linking Rules
 
@@ -78,17 +72,13 @@ A UPC is linkable only when:
 - That matched PRC level resolves to one selected quantity.
 - No other UPC for the same SKU links to that same quantity.
 
-When a UPC is linkable, it is added to `CodeToQTY`. The matching quantity is added to `LinkedQTY` in the same position.
+When a UPC is linkable, it is added to the `ModifiersStockcode` slot matching the tier's `ModifiersQty` position. Every nonblank modifier stockcode also remains in `code`.
 
-Example:
-
-![Linked UPC sample](assets/inventory_linked_sample.png)
-
-In the example, each UPC in `CodeToQTY` lines up with the quantity in the same position in `LinkedQTY`.
+Each `ModifiersStockcode` lines up with the quantity, cost, latest cost, and price in the same position.
 
 ## Duplicate Quantity Protection
 
-If two UPC codes point to the same quantity for one SKU, the utility does not choose one. Both UPC codes are treated as unlinkable for `CodeToQTY`.
+If two UPC codes point to the same quantity for one SKU, the utility does not choose one. The tier's `ModifiersStockcode` slot remains blank and both UPCs are audited.
 
 This prevents an import from guessing which code should control a modifier quantity.
 
@@ -106,7 +96,7 @@ Common audit reasons include:
 - no selected PRC level matches the UPC level
 - multiple UPCs point to the same quantity
 
-The `ISSUE` column opens an embedded memo for the row. The memo explains why that UPC stayed out of `CodeToQTY` and `LinkedQTY`.
+The `ISSUE` column opens an embedded memo for the row. The memo explains why that UPC stayed out of `ModifiersStockcode`.
 
 ![UPC audit sample](assets/upc_audit_sample.png)
 

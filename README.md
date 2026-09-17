@@ -25,15 +25,13 @@ Generated CSV and reference files are packaged into a timestamped ZIP archive. T
 
 ## 7.2.26 Highlights
 
-- Added `CodeToQTY` and `LinkedQTY` to `4_inventory.csv` immediately after the existing `code` column.
-- Kept the existing `code` column unchanged so current import behavior remains intact.
-- Populated `CodeToQTY` and `LinkedQTY` only when one UPC can be safely linked to one selected quantity.
-- Sorted linked UPCs by the numerical order of their linked quantity.
-- Treated duplicate quantity matches as unlinkable. If two UPC codes point to the same quantity, neither UPC is added to `CodeToQTY`.
+- Added position-aligned `ModifiersStockcode` values for UPCs that can be safely linked to one tier quantity.
+- Kept the existing `code` column as the complete item barcode set.
+- Normalized item price, cost, stock, and units-per-case values to a QTY=1 unit basis.
+- Sorted modifier tiers by quantity and treated duplicate UPC matches for one quantity as unlinkable.
 - Replaced the UPC audit CSV with `reference_UPCModifierLinkAudit.html`.
 - Kept only unlinkable UPC codes in the audit report.
 - Added memo-style issue links in the audit `ISSUE` column. The memo content is embedded in the HTML report.
-- Set `ADD QTY=1 IF MISSING` to off by default in both standard and guided mode.
 - Added safer ZIP creation by writing to a temporary archive first and moving it into place only after the ZIP is complete.
 - Improved runner error handling for locked files, permission issues, and unexpected failures.
 - Kept sale pricing out of `4_inventory.csv`. Sale pricing is exported only in `reference_SalePrices.csv`.
@@ -69,7 +67,7 @@ Common output files include:
 - `reference_UPCModifierLinkAudit.html`
 - `5_gift_cards.csv`
 
-Inventory output includes the original `code` column plus the new `CodeToQTY` and `LinkedQTY` columns. `CodeToQTY` contains linkable UPC codes. `LinkedQTY` contains the matching quantities in the same order.
+Inventory output includes the five position-aligned tier columns: `ModifiersQty`, `ModifiersCost`, `ModifiersLatestCost`, `ModifiersPrice`, and `ModifiersStockcode`. The original `code` column remains the complete item barcode set.
 
 ## Running The Application
 
@@ -123,7 +121,6 @@ Optional runner flags include:
 - `--inventory false`
 - `--giftcards false`
 - `--includeinactive true`
-- `--addqty1ifmissing false`
 - `--preview true`
 
 ## Documentation

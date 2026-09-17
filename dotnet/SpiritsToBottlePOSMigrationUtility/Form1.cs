@@ -36,7 +36,6 @@ public partial class Form1 : Form
     private readonly CheckBox guidedGiftCardsCheckBox = new();
     private readonly TableLayoutPanel guidedInventoryOptionsLayout = new();
     private readonly CheckBox guidedIncludeInactiveCheckBox = new();
-    private readonly CheckBox guidedAddQtyOneIfMissingCheckBox = new();
     private readonly TableLayoutPanel guidedRunLayout = new();
     private readonly Label guidedRunSummaryLabel = new();
     private bool _isBusy;
@@ -106,7 +105,6 @@ public partial class Form1 : Form
         };
         giftCardsCheckBox.CheckedChanged += (_, _) => RefreshPlannedOutputs();
         includeInactiveCheckBox.CheckedChanged += (_, _) => RefreshPlannedOutputs();
-        addQtyOneIfMissingCheckBox.CheckedChanged += (_, _) => RefreshPlannedOutputs();
     }
 
     private void WireGuidedOptionEvents()
@@ -122,7 +120,6 @@ public partial class Form1 : Form
         };
         guidedGiftCardsCheckBox.CheckedChanged += (_, _) => RefreshPlannedOutputs();
         guidedIncludeInactiveCheckBox.CheckedChanged += (_, _) => RefreshPlannedOutputs();
-        guidedAddQtyOneIfMissingCheckBox.CheckedChanged += (_, _) => RefreshPlannedOutputs();
     }
 
     private void ApplyDefaults()
@@ -155,8 +152,7 @@ public partial class Form1 : Form
             ExportCustomers: true,
             ExportInventory: true,
             ExportGiftCards: true,
-            IncludeInactiveProducts: false,
-            AddQuantityOneIfMissing: false);
+            IncludeInactiveProducts: false);
     }
 
     private void ApplyOptionsToStandardControls(ExportOptions options)
@@ -168,8 +164,7 @@ public partial class Form1 : Form
             customersCheckBox,
             inventoryCheckBox,
             giftCardsCheckBox,
-            includeInactiveCheckBox,
-            addQtyOneIfMissingCheckBox);
+            includeInactiveCheckBox);
     }
 
     private void ApplyOptionsToGuidedControls(ExportOptions options)
@@ -181,8 +176,7 @@ public partial class Form1 : Form
             guidedCustomersCheckBox,
             guidedInventoryCheckBox,
             guidedGiftCardsCheckBox,
-            guidedIncludeInactiveCheckBox,
-            guidedAddQtyOneIfMissingCheckBox);
+            guidedIncludeInactiveCheckBox);
     }
 
     private static void ApplyOptionsToControls(
@@ -192,8 +186,7 @@ public partial class Form1 : Form
         CheckBox customers,
         CheckBox inventory,
         CheckBox giftCards,
-        CheckBox includeInactive,
-        CheckBox addQtyOneIfMissing)
+        CheckBox includeInactive)
     {
         departments.Checked = options.ExportDepartments;
         vendors.Checked = options.ExportVendors;
@@ -201,7 +194,6 @@ public partial class Form1 : Form
         inventory.Checked = options.ExportInventory;
         giftCards.Checked = options.ExportGiftCards;
         includeInactive.Checked = options.IncludeInactiveProducts;
-        addQtyOneIfMissing.Checked = options.AddQuantityOneIfMissing;
     }
 
     private void BuildLayout()
@@ -377,7 +369,6 @@ public partial class Form1 : Form
         ConfigureCheckBox(inventoryCheckBox, "Inventory");
         ConfigureCheckBox(giftCardsCheckBox, "Gift Card");
         ConfigureCheckBox(includeInactiveCheckBox, "Include Inactive Products");
-        ConfigureCheckBox(addQtyOneIfMissingCheckBox, "Add QTY=1 If Missing");
         exportsLayout.AutoSize = true;
         exportsLayout.AutoSizeMode = AutoSizeMode.GrowAndShrink;
         exportsLayout.ColumnCount = 1;
@@ -388,11 +379,10 @@ public partial class Form1 : Form
         exportsLayout.Controls.Add(inventoryCheckBox, 0, 3);
         exportsLayout.Controls.Add(giftCardsCheckBox, 0, 4);
         exportsLayout.Controls.Add(includeInactiveCheckBox, 0, 5);
-        exportsLayout.Controls.Add(addQtyOneIfMissingCheckBox, 0, 6);
         exportsLayout.Dock = DockStyle.Fill;
         exportsLayout.Margin = Padding.Empty;
-        exportsLayout.RowCount = 7;
-        for (var index = 0; index < 7; index++)
+        exportsLayout.RowCount = 6;
+        for (var index = 0; index < 6; index++)
         {
             exportsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
@@ -544,23 +534,20 @@ public partial class Form1 : Form
     private void ConfigureGuidedInventoryOptionsStep()
     {
         ConfigureCheckBox(guidedIncludeInactiveCheckBox, "Include Inactive Products");
-        ConfigureCheckBox(guidedAddQtyOneIfMissingCheckBox, "Add QTY=1 If Missing");
 
         guidedInventoryOptionsLayout.AutoSize = true;
         guidedInventoryOptionsLayout.ColumnCount = 2;
         guidedInventoryOptionsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
         guidedInventoryOptionsLayout.ColumnStyles.Add(new ColumnStyle());
         guidedInventoryOptionsLayout.Controls.Add(guidedIncludeInactiveCheckBox, 0, 0);
-        guidedInventoryOptionsLayout.Controls.Add(guidedAddQtyOneIfMissingCheckBox, 0, 1);
         guidedInventoryOptionsLayout.Dock = DockStyle.Top;
-        guidedInventoryOptionsLayout.RowCount = 2;
-        for (var index = 0; index < 2; index++)
+        guidedInventoryOptionsLayout.RowCount = 1;
+        for (var index = 0; index < 1; index++)
         {
             guidedInventoryOptionsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
 
         guidedInventoryOptionsLayout.SetColumnSpan(guidedIncludeInactiveCheckBox, 2);
-        guidedInventoryOptionsLayout.SetColumnSpan(guidedAddQtyOneIfMissingCheckBox, 2);
     }
 
     private void ConfigureGuidedRunStep()
@@ -707,8 +694,7 @@ public partial class Form1 : Form
             customersCheckBox,
             inventoryCheckBox,
             giftCardsCheckBox,
-            includeInactiveCheckBox,
-            addQtyOneIfMissingCheckBox);
+            includeInactiveCheckBox);
     }
 
     private ExportOptions ReadGuidedOptions()
@@ -719,8 +705,7 @@ public partial class Form1 : Form
             guidedCustomersCheckBox,
             guidedInventoryCheckBox,
             guidedGiftCardsCheckBox,
-            guidedIncludeInactiveCheckBox,
-            guidedAddQtyOneIfMissingCheckBox);
+            guidedIncludeInactiveCheckBox);
     }
 
     private static ExportOptions ReadOptionsFromControls(
@@ -729,8 +714,7 @@ public partial class Form1 : Form
         CheckBox customers,
         CheckBox inventory,
         CheckBox giftCards,
-        CheckBox includeInactive,
-        CheckBox addQtyOneIfMissing)
+        CheckBox includeInactive)
     {
         return new ExportOptions(
             departments.Checked,
@@ -738,8 +722,7 @@ public partial class Form1 : Form
             customers.Checked,
             inventory.Checked,
             giftCards.Checked,
-            includeInactive.Checked,
-            addQtyOneIfMissing.Checked);
+            includeInactive.Checked);
     }
 
     private string GetCurrentSourceDirectory()
@@ -844,8 +827,7 @@ public partial class Form1 : Form
             customersCheckBox,
             inventoryCheckBox,
             giftCardsCheckBox,
-            includeInactiveCheckBox,
-            addQtyOneIfMissingCheckBox);
+            includeInactiveCheckBox);
 
         ApplyExportAvailability(
             guidedSourceDirectoryTextBox.Text.Trim(),
@@ -854,8 +836,7 @@ public partial class Form1 : Form
             guidedCustomersCheckBox,
             guidedInventoryCheckBox,
             guidedGiftCardsCheckBox,
-            guidedIncludeInactiveCheckBox,
-            guidedAddQtyOneIfMissingCheckBox);
+            guidedIncludeInactiveCheckBox);
     }
 
     private void ApplyExportAvailability(
@@ -865,8 +846,7 @@ public partial class Form1 : Form
         CheckBox customers,
         CheckBox inventory,
         CheckBox giftCards,
-        CheckBox includeInactive,
-        CheckBox addQtyOneIfMissing)
+        CheckBox includeInactive)
     {
         var hasSourceDirectory = Directory.Exists(sourceDirectory);
         var departmentsAvailable = !hasSourceDirectory || HasRequiredTables(sourceDirectory, MigrationCatalog.GetRequiredTablesForExport("departments"));
@@ -883,7 +863,6 @@ public partial class Form1 : Form
 
         var inventoryOptionsAvailable = !_isBusy && inventoryAvailable && inventory.Checked;
         includeInactive.Enabled = inventoryOptionsAvailable;
-        addQtyOneIfMissing.Enabled = inventoryOptionsAvailable;
     }
 
     private static bool HasRequiredTables(string sourceDirectory, IReadOnlyList<string> requiredTables)
@@ -1104,7 +1083,6 @@ public partial class Form1 : Form
             builder.AppendLine();
             builder.AppendLine("Inventory:");
             builder.AppendLine($"- Include inactive products: {(options.IncludeInactiveProducts ? "Yes" : "No")}");
-            builder.AppendLine($"- Add QTY=1 if missing: {(options.AddQuantityOneIfMissing ? "Yes" : "No")}");
         }
 
         return builder.ToString().TrimEnd();

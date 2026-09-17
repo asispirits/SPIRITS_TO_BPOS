@@ -83,32 +83,32 @@ Pricing rows come from `PRC.DBF` rows where `QTY > 0`; levels `7`, `8`, and `9` 
 | CSV column | Source data | How the value is built |
 | --- | --- | --- |
 | `ImportType` | Constant | Always `I`. |
-| `code` | `UPC.DBF.UPC` where `UPC.DBF.SKU = INV.DBF.SKU` | Uses nonblank UPC values that contain only digits. Duplicate UPCs are removed, values are sorted, joined with commas, and limited to 250 characters. This column remains unchanged by the UPC-to-QTY linking logic. |
-| `CodeToQTY` | `UPC.DBF.UPC`, `UPC.DBF.LEVEL`, selected `PRC.DBF.LEVEL`, selected `PRC.DBF.QTY` | Contains only UPC codes that can be linked one-to-one to a selected price quantity. Values are ordered by the numerical order of the linked quantity. |
-| `LinkedQTY` | Selected `PRC.DBF.QTY` linked through matching `UPC.DBF.LEVEL` and `PRC.DBF.LEVEL` | Contains the quantities linked to `CodeToQTY`. The first value in `LinkedQTY` belongs to the first value in `CodeToQTY`, the second belongs to the second, and so on. |
+| `code` | `UPC.DBF.UPC` where `UPC.DBF.SKU = INV.DBF.SKU` | Uses nonblank numeric UPC values. Duplicate UPCs are removed, values are sorted, and joined with commas. Every exported `ModifiersStockcode` also appears here. |
 | `sku` | `INV.DBF.SKU` | Formatted SKU text. |
 | `name` | `INV.DBF.NAME` | Cleaned uppercase item name, line breaks replaced with spaces, limited to 100 characters. |
-| `cost` | `STK.DBF.ACOST`, `INV.DBF.PACK`, selected `PRC.DBF.QTY` | Average unit cost is `ACOST / PACK`, rounded to 4 decimals using banker's rounding. `PACK` defaults to at least `1`. CSV cost is average unit cost multiplied by the default price quantity, then money formatted. |
-| `lastcost` | `STK.DBF.LCOST`, `INV.DBF.PACK`, selected `PRC.DBF.QTY` | Same as `cost`, but starts from last cost `LCOST`. |
-| `price` | Selected `PRC.DBF.PRICE` | Uses the first unique selected price quantity after pricing rows are ordered by quantity and original source order. Money formatted. If no price rows exist, `0.00`. |
+| `cost` | `STK.DBF.ACOST`, `INV.DBF.PACK` | Unit cost calculated as `ACOST / PACK`, rounded to 4 decimals and money formatted. |
+| `lastcost` | `STK.DBF.LCOST`, `INV.DBF.PACK` | Unit latest cost calculated as `LCOST / PACK`, rounded to 4 decimals and money formatted. |
+| `price` | Selected `PRC.DBF.PRICE`, `PRC.DBF.QTY` | Uses the lowest-price QTY=1 row when present. Otherwise uses the lowest positive quantity's lowest price divided by that quantity, rounded to 2 decimals. |
 | `minprice` | `STK.DBF.MINCOST` | Money formatted when greater than `0`; otherwise blank. |
 | `DONOTDISCOUNT` | `PRC.DBF.DCODE` matched to `DSC.DBF.DCODE`, with `DSC.DBF.LEVEL1DISC = 0` | `TRUE` when any preferred discount code for the SKU is marked non-discountable; otherwise blank. |
-| `qty` | `STK.DBF.BACK`, `STK.DBF.FLOOR`, selected `PRC.DBF.QTY` | If `Add QTY=1 if missing` is selected, quantity is `BACK + FLOOR`. Otherwise quantity is truncated `BACK / inventory quantity divisor`. The inventory quantity divisor is the smallest selected priced quantity when available, otherwise the smallest selected quantity, otherwise `1`. Result is rounded to 3 decimals for output. |
-| `unitspercase` | `INV.DBF.PACK`, selected `PRC.DBF.QTY` | `PACK / inventory quantity divisor`, truncated to a whole number. If the divisor is zero or less, uses `PACK`. |
+| `qty` | `STK.DBF.BACK`, `STK.DBF.FLOOR` | Shared unit stock calculated as `BACK + FLOOR`, rounded to 3 decimals for output. |
+| `unitspercase` | `INV.DBF.PACK` | Uses `PACK` on the same QTY=1 unit basis. |
 | `POINTSMULTIPLIER` | `INV.DBF.FSFACTOR` | Only values `1`, `2`, `3`, `4`, and `5` are exported. Any blank, fractional, zero, negative, or out-of-range value exports as `1`. |
 | `taxname` | `INV.DBF.CAT` matched to `CAT.DBF.CAT`; tax setup from `CNT.DBF` and `TXC.DBF` | If the item's category has `CAT.DBF.TAXLEVEL > 0`, uses the sales tax name from the `TXC.DBF` row whose `CODE` matches `CNT.DBF` code `CUSTAX` and whose `LEVEL` matches `TAXLEVEL`. The name is `TXC.DBF.DESCRIPT`, or `TXC.DBF.CODE` if description is blank. Blank when `TAXLEVEL = 0`, the category is unknown, or no matching tax row exists. |
 | `taxrate` | `TXC.DBF.RATE` through the same code-and-level sales tax lookup as `taxname` | For taxable items with a matching tax row only, `TXC.DBF.RATE * 100`, rounded to 2 decimals. Blank when `TAXLEVEL = 0`, the category is unknown, or no matching tax row exists. |
 | `categoryname` | `INV.DBF.TYPENAME` | Cleaned uppercase type name. Defaults to `MISC` when blank. Limited to 50 characters. |
 | `suppliername` | `STK.DBF.LVEND` or `STK.DBF.PVEND`, matched to `VND.DBF.VCODE` | Uses `LVEND` when present, otherwise `PVEND`. The vendor name is built from `VND.DBF.LASTNAME` and `VND.DBF.FIRSTNAME`. Defaults to `UNKNOWN` when no vendor name is found. Limited to 50 characters. |
+| `size` | `INV.DBF.SNAME`, fallback parse from `INV.DBF.NAME` | Combines the parsed unit size and type, such as `12 OZ` or `750 ML`. |
 | `vendoritemno` | `UPC.DBF.UPC`, `UPC.DBF.LAST` where `UPC.DBF.SKU = INV.DBF.SKU` | Uses UPC rows whose raw UPC contains non-digit characters. Digits are extracted, duplicates are removed using digits plus `LAST`, values are ordered by newest `LAST` first, and only values up to 10 digits are kept. Joined with commas and limited to 250 characters. |
 | `Unit_Size` | `INV.DBF.SNAME`, fallback parse from `INV.DBF.NAME` | If `SNAME` is blank or `N/A`, attempts to find a pack size from item name text such as `6PK`; otherwise defaults to `1`. When `SNAME` is present, digits and decimal characters are extracted. Limited to 10 characters. |
 | `Unit_Type` | `INV.DBF.SNAME`, fallback parse from `INV.DBF.NAME` | If item name pack parsing succeeds, type is `PK`. If `SNAME` is present, letters are extracted. `O` and `Z` become `OZ`. If type is missing and size is `750` or `500`, type becomes `ML`; if size is `1.5` or `1.75`, type becomes `L`. Otherwise defaults to `N/A`. Limited to 20 characters. |
-| `ModifiersQty` | `PRC.DBF.QTY` from levels `1` through `4` | Every distinct quantity greater than `1` from the preferred store. Duplicate quantities use the row with the lowest price. Values are ordered by quantity, comma-separated, and limited to 100 characters. |
+| `ModifiersQty` | `PRC.DBF.QTY` from levels `1` through `4` | Every distinct positive whole-number quantity greater than `1` from the preferred store. Duplicate quantities use the row with the lowest price. An actual QTY=1 tier is prepended only when pack tiers exist and one UPC links unambiguously to QTY=1. |
 | `ModifiersCost` | Modifier `PRC.DBF.QTY`, `STK.DBF.ACOST`, `INV.DBF.PACK` | For each modifier quantity, average unit cost multiplied by that quantity, money formatted. Values are comma-separated and limited to 100 characters. |
 | `ModifiersLatestCost` | Modifier `PRC.DBF.QTY`, `STK.DBF.LCOST`, `INV.DBF.PACK` | For each modifier quantity, last unit cost multiplied by that quantity, money formatted. Values are comma-separated and limited to 100 characters. |
 | `ModifiersPrice` | Modifier `PRC.DBF.PRICE` from levels `1` through `4` | For repeated quantities, uses the lowest available price. Values are ordered to align with `ModifiersQty`, comma-separated, and limited to 100 characters. |
+| `ModifiersStockcode` | `UPC.DBF.UPC`, `UPC.DBF.LEVEL`, `PRC.DBF.LEVEL`, `PRC.DBF.QTY` | Position-aligned with `ModifiersQty`. Contains the numeric UPC only when exactly one UPC resolves to the tier quantity; otherwise its slot is blank. Every nonblank value also appears in `code`. |
 | `notes` | `INV.DBF.MEMO` | Line breaks are replaced with spaces. The text is reduced to 250 characters before repeated spaces are collapsed, then cleaned uppercase and limited to 100 characters. |
-| `bottledeposit` | `INV.DBF.DEPOS`, selected `PRC.DBF.QTY` | Blank when `DEPOS` is blank. Otherwise uses the effective package quantity followed by `PK`, such as `1PK` or `6PK`. Effective package quantity is the smallest selected quantity, unless `Add QTY=1 if missing` is selected and no quantity `1` exists, in which case it is `1`. |
+| `bottledeposit` | `INV.DBF.DEPOS` | Blank when `DEPOS` is blank. Otherwise `1PK` on the unit-item basis. |
 
 ### UPC-To-QTY Linking Rules
 
@@ -122,11 +122,7 @@ A UPC is linkable only when all of these conditions are true:
 - The matched `PRC.DBF.LEVEL` resolves to one selected `PRC.DBF.QTY`.
 - The linked quantity is used by only one UPC for that SKU.
 
-When a UPC is linkable:
-- the UPC is added to `CodeToQTY`
-- the linked quantity is added to `LinkedQTY`
-- both fields are ordered by linked quantity
-- the UPC remains in the original `code` column
+When a UPC is linkable, it is written to the `ModifiersStockcode` slot aligned with its `ModifiersQty` quantity and remains in `code`.
 
 When a UPC is not linkable, it remains in `code` and is written to `reference_UPCModifierLinkAudit.html`.
 
@@ -146,16 +142,6 @@ Inactive status is based on the selected store's `STK.DBF.STAT` value for the SK
 - Any other status is treated as inactive.
 - Inactive items are always written to `reference_InactiveItems.csv`.
 - Inactive items are written to `4_inventory.csv` only when the `Include inactive products` option is selected.
-
-### Inventory QTY=1 Option
-
-`Add QTY=1 if missing` is off by default.
-
-When selected and a SKU has pricing rows but none with `QTY = 1`, the export adds an internal unit price row:
-
-- Quantity is `1`.
-- Price is the first selected non-unit price divided by its quantity, rounded to 2 decimals.
-- This generated row can become the default inventory `price`.
 
 ## `reference_InactiveItems.csv`
 
@@ -183,7 +169,7 @@ Rows come from `PRC.DBF` rows for the active store where `ONSALE` is true. The s
 
 This file is generated when inventory export is selected.
 
-It contains only UPC codes that could not be safely added to `CodeToQTY` and `LinkedQTY`. Linkable UPC codes are not included in the audit report.
+It contains only UPC codes that could not be safely added to `ModifiersStockcode`. Linkable UPC codes are not included in the audit report.
 
 | Report column | Source data | How the value is built |
 | --- | --- | --- |

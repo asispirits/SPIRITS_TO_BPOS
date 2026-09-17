@@ -6,8 +6,7 @@ public sealed record ExportOptions(
     bool ExportCustomers,
     bool ExportInventory,
     bool ExportGiftCards,
-    bool IncludeInactiveProducts,
-    bool AddQuantityOneIfMissing)
+    bool IncludeInactiveProducts)
 {
     public bool HasSelections =>
         ExportDepartments ||

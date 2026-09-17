@@ -13,12 +13,11 @@ Current build:
 - GUIDED mode that walks users through source, output, export selection, inventory options, and run confirmation.
 - Source and output folder selection.
 - User-local saved output folder.
-- Export options for departments, vendors, customers, inventory, gift cards, inactive items, sale prices, and default price levels.
-- `ADD QTY=1 IF MISSING` off by default.
+- Export options for departments, vendors, customers, inventory, gift cards, inactive items, and sale prices.
 - Managed DBF reading without local FoxPro/dBase driver requirements.
 - Validation for required DBF inputs based on selected exports.
 - BottlePOS CSV generation for all selected data sets.
-- `CodeToQTY` and `LinkedQTY` inventory columns for UPC-to-QTY links.
+- Position-aligned `ModifiersStockcode` inventory values for UPC-to-tier links.
 - `reference_UPCModifierLinkAudit.html` for unlinkable UPC codes.
 - ZIP packaging of generated files.
 - Cleanup of the temporary unpacked CSV folder.
@@ -58,5 +57,4 @@ Optional runner flags include:
 - `--inventory false`
 - `--giftcards false`
 - `--includeinactive true`
-- `--addqty1ifmissing false`
 - `--preview true`

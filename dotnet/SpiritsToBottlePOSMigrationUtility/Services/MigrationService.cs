@@ -15,8 +15,6 @@ public sealed class MigrationService : IMigrationService
     {
         "ImportType",
         "code",
-        "CodeToQTY",
-        "LinkedQTY",
         "sku",
         "name",
         "cost",
@@ -31,6 +29,7 @@ public sealed class MigrationService : IMigrationService
         "taxrate",
         "categoryname",
         "suppliername",
+        "size",
         "vendoritemno",
         "Unit_Size",
         "Unit_Type",
@@ -38,6 +37,7 @@ public sealed class MigrationService : IMigrationService
         "ModifiersCost",
         "ModifiersLatestCost",
         "ModifiersPrice",
+        "ModifiersStockcode",
         "notes",
         "bottledeposit"
     };
@@ -250,7 +250,8 @@ public sealed class MigrationService : IMigrationService
             .GroupBy(row => row.Sku)
             .ToDictionary(group => group.Key, BuildStockAggregate);
 
-        var priceIndex = BuildPriceIndex(priceRows, store, options, nonDiscountableDiscountCodes);
+        var priceIndex = BuildPriceIndex(priceRows, store, nonDiscountableDiscountCodes);
+        var tierPricingBySku = BuildTierPricingBySku(priceRows, store);
         var modifierPricingBySku = BuildModifierPricingBySku(priceRows, store);
         var upcBySku = BuildUpcBySku(upcRows);
         var upcLevelEntriesBySku = BuildUpcLevelEntriesBySku(upcRows);
@@ -267,6 +268,7 @@ public sealed class MigrationService : IMigrationService
             var sku = inventoryRow.Sku;
             stockBySku.TryGetValue(sku, out var stock);
             priceIndex.PricingBySku.TryGetValue(sku, out var pricingRows);
+            tierPricingBySku.TryGetValue(sku, out var tierPricingRows);
             modifierPricingBySku.TryGetValue(sku, out var modifierPricingRows);
             upcBySku.TryGetValue(sku, out var productUpcs);
             upcLevelEntriesBySku.TryGetValue(sku, out var upcLevelEntries);
@@ -283,32 +285,26 @@ public sealed class MigrationService : IMigrationService
                 ? string.Empty
                 : foundVendorName;
 
-            var pricingSummary = BuildPricingSummary(pricingRows, modifierPricingRows, averageCostPerUnit, lastCostPerUnit);
-            var upcQuantityLinkSummary = BuildUpcQuantityLinkSummary(sku, pricingRows, upcLevelEntries);
+            var upcQuantityLinkSummary = BuildUpcQuantityLinkSummary(sku, tierPricingRows, upcLevelEntries);
+            var pricingSummary = BuildPricingSummary(
+                pricingRows,
+                modifierPricingRows,
+                upcQuantityLinkSummary.Links,
+                averageCostPerUnit,
+                lastCostPerUnit);
             upcModifierLinkAuditRows.AddRange(upcQuantityLinkSummary.AuditRows);
             var isDiscountBlocked = priceIndex.NonDiscountableBySku.TryGetValue(sku, out var foundDiscountBlocked) &&
                 foundDiscountBlocked;
             var unitSummary = BuildUnitSummary(inventoryRow.Sname, inventoryRow.Name);
-            var inventoryQuantityDivisor = priceIndex.InventoryQuantityDivisorBySku.TryGetValue(sku, out var divisor)
-                ? divisor
-                : pricingSummary.DefaultQuantity;
-            var unitsPerCaseValue = inventoryQuantityDivisor <= 0m
-                ? pack
-                : pack / inventoryQuantityDivisor;
-            var effectivePackageQuantity = priceIndex.EffectivePackageQuantityBySku.TryGetValue(sku, out var quantity)
-                ? quantity
-                : pricingSummary.DefaultQuantity;
-            var quantityValue = options.AddQuantityOneIfMissing
-                ? totalStock
-                : inventoryQuantityDivisor <= 0m
-                    ? 0m
-                    : Math.Truncate(backStock / inventoryQuantityDivisor);
+            var sizeValue = unitSummary.Type == "N/A"
+                ? unitSummary.Size
+                : $"{unitSummary.Size} {unitSummary.Type}";
 
             var depositValue = string.Empty;
             var depositCode = UpperTrim(inventoryRow.Depos);
             if (!string.IsNullOrWhiteSpace(depositCode))
             {
-                depositValue = $"{FormatPackageQuantity(effectivePackageQuantity)}PK";
+                depositValue = "1PK";
             }
 
             var hasCategoryTaxLevel = categoryTaxLevelByCode.TryGetValue(UpperTrim(inventoryRow.Cat), out var taxLevel);
@@ -324,18 +320,16 @@ public sealed class MigrationService : IMigrationService
             var outputRow = new[]
             {
                 "I",
-                TrimToLength(RemoveCharacters(productUpcs is null ? string.Empty : string.Join(",", productUpcs), "\"-+@"), 250),
-                TrimToLength(string.Join(",", upcQuantityLinkSummary.Links.Select(link => link.Upc)), 250),
-                TrimToLength(string.Join(",", upcQuantityLinkSummary.Links.Select(link => FormatQuantity(link.Quantity))), 250),
+                RemoveCharacters(productUpcs is null ? string.Empty : string.Join(",", productUpcs), "\"-+@"),
                 FormatSku(sku),
                 TrimToLength(CleanUpperMultilineText(inventoryRow.Name), 100),
-                TrimToLength(FormatMoney(averageCostPerUnit * pricingSummary.DefaultQuantity), 25),
-                TrimToLength(FormatMoney(lastCostPerUnit * pricingSummary.DefaultQuantity), 50),
-                TrimToLength(FormatMoney(pricingSummary.DefaultPrice), 25),
+                TrimToLength(FormatMoney(averageCostPerUnit), 25),
+                TrimToLength(FormatMoney(lastCostPerUnit), 50),
+                TrimToLength(FormatMoney(pricingSummary.UnitPrice), 25),
                 TrimToLength(FormatPositiveOptionalMoney(stock?.MinCost), 25),
                 isDiscountBlocked ? "TRUE" : string.Empty,
-                FormatQuantity(quantityValue),
-                TrimToLength(FormatInteger(unitsPerCaseValue), 25),
+                FormatQuantity(totalStock),
+                TrimToLength(FormatInteger(pack), 25),
                 FormatPointsMultiplier(inventoryRow.FsFactor),
                 TrimToLength(taxName, 30),
                 TrimToLength(isTaxable && taxRow is not null ? FormatRate(ToDecimal(taxRow, "RATE") * 100m) : string.Empty, 30),
@@ -343,13 +337,15 @@ public sealed class MigrationService : IMigrationService
                     ? "MISC"
                     : CleanUpperMultilineText(inventoryRow.TypeName), 50),
                 TrimToLength(string.IsNullOrWhiteSpace(vendorName) ? "UNKNOWN" : CleanUpperMultilineText(vendorName), 50),
+                TrimToLength(sizeValue, 30),
                 TrimToLength(vendorItems is null ? string.Empty : string.Join(",", vendorItems), 250),
                 TrimToLength(unitSummary.Size, 10),
                 TrimToLength(unitSummary.Type, 20),
-                TrimToLength(pricingSummary.ModifierQuantities, 100),
-                TrimToLength(pricingSummary.ModifierCosts, 100),
-                TrimToLength(pricingSummary.ModifierLastCosts, 100),
-                TrimToLength(pricingSummary.ModifierPrices, 100),
+                pricingSummary.ModifierQuantities,
+                pricingSummary.ModifierCosts,
+                pricingSummary.ModifierLastCosts,
+                pricingSummary.ModifierPrices,
+                pricingSummary.ModifierStockcodes,
                 CleanNotes(inventoryRow.Memo),
                 TrimToLength(depositValue, 100)
             };
@@ -660,12 +656,9 @@ public sealed class MigrationService : IMigrationService
     private static PriceIndex BuildPriceIndex(
         IReadOnlyList<PriceSourceRow> priceRows,
         int store,
-        ExportOptions options,
         ISet<string> nonDiscountableDiscountCodes)
     {
         var pricingBySku = new Dictionary<int, List<PricingRow>>();
-        var effectivePackageQuantityBySku = new Dictionary<int, decimal>();
-        var inventoryQuantityDivisorBySku = new Dictionary<int, decimal>();
         var nonDiscountableBySku = new Dictionary<int, bool>();
 
         foreach (var group in BuildQualifiedPriceEntries(priceRows).GroupBy(entry => entry.Row.Sku))
@@ -683,53 +676,39 @@ public sealed class MigrationService : IMigrationService
                 .ThenBy(row => row.Sequence)
                 .ToList();
 
-            if (options.AddQuantityOneIfMissing && pricingRows.Count > 0 && pricingRows.All(row => row.Quantity != 1m))
-            {
-                var firstNonUnitRow = pricingRows[0];
-                pricingRows.Add(new PricingRow(
-                    group.Key,
-                    1m,
-                    VfpRound(firstNonUnitRow.Price / firstNonUnitRow.Quantity, 2),
-                    firstNonUnitRow.Level,
-                    -1));
-
-                pricingRows = pricingRows
-                    .OrderBy(row => row.Quantity)
-                    .ThenBy(row => row.Sequence)
-                    .ToList();
-            }
-
             pricingBySku[group.Key] = pricingRows;
-
-            var preferredQuantities = GetPreferredStoreEntries(group, store, static _ => true)
-                .Select(entry => entry.Row.Quantity)
-                .Where(quantity => quantity > 0m)
-                .OrderBy(quantity => quantity)
-                .ToList();
-
-            effectivePackageQuantityBySku[group.Key] = preferredQuantities.Count == 0
-                ? 1m
-                : options.AddQuantityOneIfMissing && preferredQuantities.All(quantity => quantity != 1m)
-                    ? 1m
-                    : preferredQuantities[0];
-
-            var pricedQuantities = pricedEntries
-                .Select(entry => entry.Row.Quantity)
-                .Where(quantity => quantity > 0m)
-                .OrderBy(quantity => quantity)
-                .ToList();
-
-            inventoryQuantityDivisorBySku[group.Key] = pricedQuantities.Count > 0
-                ? pricedQuantities[0]
-                : preferredQuantities.Count == 0
-                    ? 1m
-                    : preferredQuantities[0];
 
             nonDiscountableBySku[group.Key] = discountEntries
                 .Any(entry => nonDiscountableDiscountCodes.Contains(entry.Row.DiscountCode));
         }
 
-        return new PriceIndex(pricingBySku, inventoryQuantityDivisorBySku, effectivePackageQuantityBySku, nonDiscountableBySku);
+        return new PriceIndex(pricingBySku, nonDiscountableBySku);
+    }
+
+    private static IReadOnlyDictionary<int, List<PricingRow>> BuildTierPricingBySku(
+        IReadOnlyList<PriceSourceRow> priceRows,
+        int store)
+    {
+        return priceRows
+            .Where(row => row.Quantity > 0m)
+            .Where(row => row.Quantity == decimal.Truncate(row.Quantity))
+            .Where(row => row.Level is "1" or "2" or "3" or "4")
+            .GroupBy(row => row.Sku)
+            .ToDictionary(
+                group => group.Key,
+                group => GetPreferredStoreEntries(
+                        group.Select(row => new PriceEntry(row, row.Sequence)),
+                        store,
+                        static _ => true)
+                    .OrderBy(entry => entry.Row.Quantity)
+                    .ThenBy(entry => entry.Sequence)
+                    .Select(entry => new PricingRow(
+                        entry.Row.Sku,
+                        entry.Row.Quantity,
+                        entry.Row.Price,
+                        entry.Row.Level,
+                        entry.Sequence))
+                    .ToList());
     }
 
     private static IReadOnlyDictionary<int, List<PricingRow>> BuildModifierPricingBySku(
@@ -738,6 +717,7 @@ public sealed class MigrationService : IMigrationService
     {
         return priceRows
             .Where(row => row.Quantity > 1m)
+            .Where(row => row.Quantity == decimal.Truncate(row.Quantity))
             .Where(row => row.Level is "1" or "2" or "3" or "4")
             .GroupBy(row => row.Sku)
             .ToDictionary(
@@ -1013,7 +993,7 @@ public sealed class MigrationService : IMigrationService
                     link.Level,
                     link.Level,
                     "Multiple UPCs for same quantity",
-                    $"Quantity {quantityText} matched multiple UPC codes ({upcsForQuantity}); CodeToQTY requires one clear UPC per quantity."));
+                    $"Quantity {quantityText} matched multiple UPC codes ({upcsForQuantity}); ModifiersStockcode requires one clear UPC per tier quantity."));
             }
         }
 
@@ -1192,7 +1172,7 @@ public sealed class MigrationService : IMigrationService
         builder.AppendLine(auditRow.Memo);
         builder.AppendLine();
         builder.AppendLine("Output behavior:");
-        builder.AppendLine("This UPC remains in the existing CODE column. It was not added to CodeToQTY or LinkedQTY because the utility could not prove one clear UPC-to-quantity link.");
+        builder.AppendLine("This UPC remains in the existing CODE column. It was not added to ModifiersStockcode because the utility could not prove one clear UPC-to-tier link.");
         return builder.ToString();
     }
 
@@ -1220,6 +1200,7 @@ public sealed class MigrationService : IMigrationService
     private static PricingSummary BuildPricingSummary(
         IReadOnlyList<PricingRow>? pricingRows,
         IReadOnlyList<PricingRow>? modifierPricingRows,
+        IReadOnlyList<UpcQuantityLink> upcLinks,
         decimal averageCostPerUnit,
         decimal lastCostPerUnit)
     {
@@ -1228,50 +1209,64 @@ public sealed class MigrationService : IMigrationService
             pricingRows = Array.Empty<PricingRow>();
         }
 
-        var seenQuantities = new HashSet<decimal>();
-        var defaultQuantity = 1;
-        var defaultPrice = 0m;
+        var unitPriceRow = pricingRows
+            .Where(row => row.Quantity == 1m)
+            .OrderBy(row => row.Price)
+            .ThenBy(row => row.Sequence)
+            .FirstOrDefault();
+
+        if (unitPriceRow is null && pricingRows.Count > 0)
+        {
+            var lowestQuantity = pricingRows.Min(row => row.Quantity);
+            unitPriceRow = pricingRows
+                .Where(row => row.Quantity == lowestQuantity)
+                .OrderBy(row => row.Price)
+                .ThenBy(row => row.Sequence)
+                .First();
+        }
+
+        var unitPrice = unitPriceRow is null || unitPriceRow.Quantity <= 0m
+            ? 0m
+            : VfpRound(unitPriceRow.Price / unitPriceRow.Quantity, 2);
+
+        var packRows = modifierPricingRows ?? Array.Empty<PricingRow>();
+        if (packRows.Count == 0)
+        {
+            return new PricingSummary(unitPrice, string.Empty, string.Empty, string.Empty, string.Empty, string.Empty);
+        }
+
         var modifierQuantities = new List<string>();
         var modifierPrices = new List<string>();
         var modifierCosts = new List<string>();
         var modifierLastCosts = new List<string>();
-        var isFirstUniqueQuantity = true;
+        var modifierStockcodes = new List<string>();
 
-        foreach (var pricingRow in pricingRows)
+        var unitLink = upcLinks.SingleOrDefault(link => link.Quantity == 1m);
+        if (unitLink is not null)
         {
-            if (!seenQuantities.Add(pricingRow.Quantity))
-            {
-                continue;
-            }
-
-            if (isFirstUniqueQuantity)
-            {
-                defaultQuantity = pricingRow.Quantity == 0m ? 1 : (int)Math.Round(pricingRow.Quantity, 0, MidpointRounding.AwayFromZero);
-                defaultPrice = pricingRow.Price;
-                isFirstUniqueQuantity = false;
-            }
+            modifierQuantities.Add("1");
+            modifierCosts.Add(string.Empty);
+            modifierLastCosts.Add(string.Empty);
+            modifierPrices.Add(string.Empty);
+            modifierStockcodes.Add(unitLink.Upc);
         }
 
-        foreach (var modifierPricingRow in modifierPricingRows ?? Array.Empty<PricingRow>())
+        foreach (var modifierPricingRow in packRows)
         {
             modifierQuantities.Add(FormatWholeNumber(modifierPricingRow.Quantity));
             modifierPrices.Add(FormatMoney(modifierPricingRow.Price));
             modifierCosts.Add(FormatMoney(averageCostPerUnit * modifierPricingRow.Quantity));
             modifierLastCosts.Add(FormatMoney(lastCostPerUnit * modifierPricingRow.Quantity));
-        }
-
-        if (defaultQuantity == 0)
-        {
-            defaultQuantity = 1;
+            modifierStockcodes.Add(upcLinks.SingleOrDefault(link => link.Quantity == modifierPricingRow.Quantity)?.Upc ?? string.Empty);
         }
 
         return new PricingSummary(
-            defaultQuantity,
-            defaultPrice,
+            unitPrice,
             string.Join(",", modifierQuantities),
             string.Join(",", modifierCosts),
             string.Join(",", modifierLastCosts),
-            string.Join(",", modifierPrices));
+            string.Join(",", modifierPrices),
+            string.Join(",", modifierStockcodes));
     }
 
     private static StockAggregate BuildStockAggregate(IGrouping<int, StockSourceRow> group)
@@ -1423,9 +1418,9 @@ public sealed class MigrationService : IMigrationService
             builder.AppendLine();
             builder.AppendLine("Inventory behavior:");
             builder.AppendLine($"- Main inventory will {(request.Options.IncludeInactiveProducts ? "include" : "exclude")} inactive items.");
-            builder.AppendLine($"- Missing QTY=1 rows will {(request.Options.AddQuantityOneIfMissing ? "be added" : "not be added")}.");
-            builder.AppendLine("- bottledeposit will use the smallest effective quantity followed by PK when an item has a deposit code.");
-            builder.AppendLine("- CodeToQTY and LinkedQTY will show UPCs that can be linked one-to-one with selected PRC quantities.");
+            builder.AppendLine("- Item price, cost, stock quantity, and units per case will use a QTY=1 unit basis.");
+            builder.AppendLine("- bottledeposit will use 1PK when an item has a deposit code.");
+            builder.AppendLine("- ModifiersStockcode will align one-to-one with ModifiersQty for unambiguous UPC-to-tier links.");
             builder.AppendLine("- reference_InactiveItems.csv is always generated when inventory is selected.");
             builder.AppendLine("- reference_SalePrices.csv contains SKU, SALE_PRICE, and REGULAR_PRICE.");
             builder.AppendLine("- reference_UPCModifierLinkAudit.html contains only UPC codes that could not be linked, with memo links in the ISSUE column.");
@@ -1484,9 +1479,9 @@ public sealed class MigrationService : IMigrationService
             builder.AppendLine();
             builder.AppendLine("Inventory behavior:");
             builder.AppendLine($"- Main inventory {(request.Options.IncludeInactiveProducts ? "included" : "excluded")} inactive items.");
-            builder.AppendLine($"- Missing QTY=1 rows were {(request.Options.AddQuantityOneIfMissing ? "added when needed" : "left unchanged")}.");
-            builder.AppendLine("- bottledeposit used the smallest effective quantity followed by PK when an item had a deposit code.");
-            builder.AppendLine("- CodeToQTY and LinkedQTY were populated for UPCs that matched selected PRC quantities one-to-one.");
+            builder.AppendLine("- Item price, cost, stock quantity, and units per case used a QTY=1 unit basis.");
+            builder.AppendLine("- bottledeposit used 1PK when an item had a deposit code.");
+            builder.AppendLine("- ModifiersStockcode was aligned with ModifiersQty for unambiguous UPC-to-tier links.");
             builder.AppendLine("- Inactive items were also written to reference_InactiveItems.csv.");
             builder.AppendLine("- Sale prices were written without the ON_SALE column.");
             builder.AppendLine("- Unlinkable UPC codes were written to reference_UPCModifierLinkAudit.html with row memo links.");
@@ -1984,19 +1979,17 @@ public sealed class MigrationService : IMigrationService
 
     private sealed record PriceIndex(
         IReadOnlyDictionary<int, List<PricingRow>> PricingBySku,
-        IReadOnlyDictionary<int, decimal> InventoryQuantityDivisorBySku,
-        IReadOnlyDictionary<int, decimal> EffectivePackageQuantityBySku,
         IReadOnlyDictionary<int, bool> NonDiscountableBySku);
 
     private sealed record PricingRow(int Sku, decimal Quantity, decimal Price, string Level, int Sequence);
 
     private sealed record PricingSummary(
-        int DefaultQuantity,
-        decimal DefaultPrice,
+        decimal UnitPrice,
         string ModifierQuantities,
         string ModifierCosts,
         string ModifierLastCosts,
-        string ModifierPrices);
+        string ModifierPrices,
+        string ModifierStockcodes);
 
     private sealed record StockAggregate(
         string Pvend,

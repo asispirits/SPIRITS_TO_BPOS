@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- replaced `CodeToQTY` and `LinkedQTY` with position-aligned `ModifiersStockcode`
+- normalized item price, cost, stock quantity, and units per case to a QTY=1 unit basis
+- retained lowest-price selection when multiple PRC levels define the same tier quantity
+- added the required combined `size` column while retaining `Unit_Size` and `Unit_Type`
+- removed the obsolete `Add QTY=1 If Missing` option
+
 All notable changes to this project should be recorded in this file.
 
 ## Unreleased

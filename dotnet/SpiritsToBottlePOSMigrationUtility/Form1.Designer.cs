@@ -38,7 +38,6 @@ partial class Form1
     private CheckBox inventoryCheckBox;
     private CheckBox giftCardsCheckBox;
     private CheckBox includeInactiveCheckBox;
-    private CheckBox addQtyOneIfMissingCheckBox;
     private Label exportsHintLabel;
     private GroupBox plannedOutputsGroupBox;
     private Label plannedOutputsHintLabel;
@@ -93,7 +92,6 @@ partial class Form1
         inventoryCheckBox = new();
         giftCardsCheckBox = new();
         includeInactiveCheckBox = new();
-        addQtyOneIfMissingCheckBox = new();
         exportsHintLabel = new();
         plannedOutputsGroupBox = new();
         plannedOutputsHintLabel = new();
