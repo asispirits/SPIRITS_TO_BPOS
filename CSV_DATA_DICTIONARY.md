@@ -88,7 +88,7 @@ Pricing rows come from `PRC.DBF` rows where `QTY > 0`; levels `7`, `8`, and `9` 
 | `name` | `INV.DBF.NAME` | Cleaned uppercase item name, line breaks replaced with spaces, limited to 100 characters. |
 | `cost` | `STK.DBF.ACOST`, `INV.DBF.PACK` | Unit cost calculated as `ACOST / PACK`, rounded to 4 decimals and money formatted. |
 | `lastcost` | `STK.DBF.LCOST`, `INV.DBF.PACK` | Unit latest cost calculated as `LCOST / PACK`, rounded to 4 decimals and money formatted. |
-| `price` | Selected `PRC.DBF.PRICE`, `PRC.DBF.QTY` | Uses the lowest-price QTY=1 row when present. Otherwise uses the lowest positive quantity's lowest price divided by that quantity, rounded to 2 decimals. |
+| `price` | Selected `PRC.DBF.PRICE`, `PRC.DBF.QTY` | Uses the lowest-price QTY=1 row when present. Otherwise, when `Add QTY=1 if missing` is selected (default), uses the lowest positive quantity's lowest price divided by that quantity, rounded to 2 decimals. When the option is not selected, uses that lowest price as stored (not divided), rounded to 2 decimals. |
 | `minprice` | `STK.DBF.MINCOST` | Money formatted when greater than `0`; otherwise blank. |
 | `DONOTDISCOUNT` | `PRC.DBF.DCODE` matched to `DSC.DBF.DCODE`, with `DSC.DBF.LEVEL1DISC = 0` | `TRUE` when any preferred discount code for the SKU is marked non-discountable; otherwise blank. |
 | `qty` | `STK.DBF.BACK`, `STK.DBF.FLOOR` | Shared unit stock calculated as `BACK + FLOOR`, rounded to 3 decimals for output. |

@@ -28,6 +28,7 @@ Generated CSV and reference files are packaged into a timestamped ZIP archive. T
 - Added position-aligned `ModifiersStockcode` values for UPCs that can be safely linked to one tier quantity.
 - Kept the existing `code` column as the complete item barcode set.
 - Normalized item price, cost, stock, and units-per-case values to a QTY=1 unit basis.
+- Restored the `Add QTY=1 If Missing` inventory option (on by default). Turn it off to keep each item's lowest tier price as stored instead of deriving a QTY=1 price.
 - Sorted modifier tiers by quantity and treated duplicate UPC matches for one quantity as unlinkable.
 - Replaced the UPC audit CSV with `reference_UPCModifierLinkAudit.html`.
 - Kept only unlinkable UPC codes in the audit report.
@@ -121,6 +122,7 @@ Optional runner flags include:
 - `--inventory false`
 - `--giftcards false`
 - `--includeinactive true`
+- `--addqty1ifmissing false`
 - `--preview true`
 
 ## Documentation

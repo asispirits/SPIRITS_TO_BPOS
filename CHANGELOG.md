@@ -7,6 +7,7 @@
 - retained lowest-price selection when multiple PRC levels define the same tier quantity
 - added the required combined `size` column while retaining `Unit_Size` and `Unit_Type`
 - removed the obsolete `Add QTY=1 If Missing` option
+- restored `Add QTY=1 If Missing` as an inventory option (on by default, `--addqty1ifmissing` in the runner); when off, items without a real QTY=1 price keep their lowest tier price undivided instead of a derived unit price
 
 All notable changes to this project should be recorded in this file.
 

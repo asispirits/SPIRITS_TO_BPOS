@@ -48,7 +48,14 @@ All applicable price levels are considered except levels `7`, `8`, and `9`.
 
 If pricing exists for the active store, active-store pricing is preferred. If no active-store pricing exists, store `1` is preferred.
 
-The item row always represents one unit. If QTY=1 pricing exists, its lowest price is used. Otherwise the lowest-quantity price is divided by its quantity and rounded to two decimals. Distinct whole-number quantities greater than one become modifier tiers; duplicate quantities use the lowest price.
+The item row represents one unit. If QTY=1 pricing exists, its lowest price is used. Distinct whole-number quantities greater than one become modifier tiers; duplicate quantities use the lowest price.
+
+If no QTY=1 pricing exists, the result depends on the `Add QTY=1 if missing` inventory option:
+
+- **On (default):** the lowest-quantity price is divided by its quantity and rounded to two decimals, creating a derived QTY=1 price.
+- **Off:** no QTY=1 price is derived. The lowest-quantity price is used as stored, rounded to two decimals and not divided.
+
+The option does not change which tiers appear in `ModifiersQty`, stock `qty`, costs, or `unitspercase`. In the command-line runner it is controlled with `--addqty1ifmissing true|false`; the default is `true`.
 
 ## Quantity Rules
 

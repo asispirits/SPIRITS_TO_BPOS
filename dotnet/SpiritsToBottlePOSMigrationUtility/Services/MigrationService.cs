@@ -291,7 +291,8 @@ public sealed class MigrationService : IMigrationService
                 modifierPricingRows,
                 upcQuantityLinkSummary.Links,
                 averageCostPerUnit,
-                lastCostPerUnit);
+                lastCostPerUnit,
+                options.AddQuantityOneIfMissing);
             upcModifierLinkAuditRows.AddRange(upcQuantityLinkSummary.AuditRows);
             var isDiscountBlocked = priceIndex.NonDiscountableBySku.TryGetValue(sku, out var foundDiscountBlocked) &&
                 foundDiscountBlocked;
@@ -1202,7 +1203,8 @@ public sealed class MigrationService : IMigrationService
         IReadOnlyList<PricingRow>? modifierPricingRows,
         IReadOnlyList<UpcQuantityLink> upcLinks,
         decimal averageCostPerUnit,
-        decimal lastCostPerUnit)
+        decimal lastCostPerUnit,
+        bool addQuantityOneIfMissing)
     {
         if (pricingRows is null || pricingRows.Count == 0)
         {
@@ -1225,9 +1227,13 @@ public sealed class MigrationService : IMigrationService
                 .First();
         }
 
+        // When the option is off, a derived QTY=1 price is not created: the item keeps the
+        // lowest tier's price as stored unless a real QTY=1 price exists.
         var unitPrice = unitPriceRow is null || unitPriceRow.Quantity <= 0m
             ? 0m
-            : VfpRound(unitPriceRow.Price / unitPriceRow.Quantity, 2);
+            : addQuantityOneIfMissing || unitPriceRow.Quantity == 1m
+                ? VfpRound(unitPriceRow.Price / unitPriceRow.Quantity, 2)
+                : VfpRound(unitPriceRow.Price, 2);
 
         var packRows = modifierPricingRows ?? Array.Empty<PricingRow>();
         if (packRows.Count == 0)
@@ -1419,6 +1425,9 @@ public sealed class MigrationService : IMigrationService
             builder.AppendLine("Inventory behavior:");
             builder.AppendLine($"- Main inventory will {(request.Options.IncludeInactiveProducts ? "include" : "exclude")} inactive items.");
             builder.AppendLine("- Item price, cost, stock quantity, and units per case will use a QTY=1 unit basis.");
+            builder.AppendLine(request.Options.AddQuantityOneIfMissing
+                ? "- A QTY=1 price will be derived when the source has none."
+                : "- A QTY=1 price will not be derived; items without one keep their lowest tier price.");
             builder.AppendLine("- bottledeposit will use 1PK when an item has a deposit code.");
             builder.AppendLine("- ModifiersStockcode will align one-to-one with ModifiersQty for unambiguous UPC-to-tier links.");
             builder.AppendLine("- reference_InactiveItems.csv is always generated when inventory is selected.");
@@ -1480,6 +1489,9 @@ public sealed class MigrationService : IMigrationService
             builder.AppendLine("Inventory behavior:");
             builder.AppendLine($"- Main inventory {(request.Options.IncludeInactiveProducts ? "included" : "excluded")} inactive items.");
             builder.AppendLine("- Item price, cost, stock quantity, and units per case used a QTY=1 unit basis.");
+            builder.AppendLine(request.Options.AddQuantityOneIfMissing
+                ? "- A QTY=1 price was derived when the source had none."
+                : "- A QTY=1 price was not derived; items without one kept their lowest tier price.");
             builder.AppendLine("- bottledeposit used 1PK when an item had a deposit code.");
             builder.AppendLine("- ModifiersStockcode was aligned with ModifiersQty for unambiguous UPC-to-tier links.");
             builder.AppendLine("- Inactive items were also written to reference_InactiveItems.csv.");

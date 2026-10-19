@@ -16,7 +16,8 @@ var options = new ExportOptions(
     GetBool(arguments, "customers", true),
     GetBool(arguments, "inventory", true),
     GetBool(arguments, "giftcards", true),
-    GetBool(arguments, "includeinactive", false));
+    GetBool(arguments, "includeinactive", false),
+    GetBool(arguments, "addqty1ifmissing", true));
 
 var request = new MigrationRequest(
     sourceDirectory,
@@ -125,7 +126,7 @@ static bool GetBool(IReadOnlyDictionary<string, string> arguments, string key, b
 static void WriteUsage()
 {
     Console.WriteLine("Usage:");
-    Console.WriteLine(@"  dotnet run --project .\dotnet\SpiritsToBottlePOSMigrationUtility.Runner -- --source ""D:\path\to\Data"" --output ""D:\path\to\Output"" [--giftcards false] [--includeinactive true] [--preview true]");
+    Console.WriteLine(@"  dotnet run --project .\dotnet\SpiritsToBottlePOSMigrationUtility.Runner -- --source ""D:\path\to\Data"" --output ""D:\path\to\Output"" [--giftcards false] [--includeinactive true] [--addqty1ifmissing false] [--preview true]");
 }
 
 static void WriteFailure(string message, Exception ex)
